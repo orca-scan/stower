@@ -15,9 +15,9 @@ Simple disk-persisted key-JSON store for Node.js.
 
 ### Why stow?
 
-Sometimes you just want to **stow** a few values away for safekeeping, without spinning up a database or pulling in a giant dependency. stow is a dead-simple, reliable way to persist structured data across sessions using nothing but JSON and the filesystem.
+Sometimes you just want to **stow** a few values away for safekeeping, without spinning up a database or pulling in a giant dependency. stow is a dead-simple, reliable way to persist structured data across sessions using a readable JSON file.
 
-Whether it’s tokens, user preferences, or a cache of scanned barcodes - just `stow` it.
+Whether it's tokens, user preferences, or a cache of scanned barcodes - just `stow` it.
 
 ## Install
 
