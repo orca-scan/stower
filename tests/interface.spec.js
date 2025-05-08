@@ -1,7 +1,7 @@
 /* eslint-disable import/extensions */
 var stow = require('../index.js');
 
-fdescribe('stow: interface', function() {
+describe('stow: interface', function() {
 
     it('should expose correct interface', function () {
         expect(typeof stow.get).toEqual('function');
