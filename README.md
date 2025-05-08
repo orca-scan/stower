@@ -87,10 +87,6 @@ If you find this useful ⭐ the repo, it helps me prioritise which bugs to work 
 
 For change-log, check [releases](https://github.com/orca-scan/stow/releases).
 
-## Star the repo
-
-Find this useful? Star the repo - it help us priorities open source tasks 🌟
-
 ## License
 
 [MIT License](LICENSE) © Orca Scan - a [barcode app](https://orcascan.com) with simple [barcode tracking APIs](https://orcascan.com/guides?tag=for-developers).
