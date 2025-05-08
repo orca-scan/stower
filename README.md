@@ -40,6 +40,9 @@ stow.remove('token');
 // view all
 console.log(stow.all());
 
+// get the JSON file name and path
+console.log(stow.filename);
+
 // clear everything
 stow.clear();
 ```
