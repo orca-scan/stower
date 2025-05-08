@@ -56,6 +56,13 @@ Method                | Description
 `all()`               | Returns an array of all stored values
 `clear()`             | Deletes all stored data and schedules a save to disk
 
+### Properties
+
+Property   | Description
+:----------|:-------------------------------------------
+`filename` | Returns filename used so store data on disk
+`debug`    | Get/set debug (console logs)
+
 ## Contributing
 
 Pull requests are welcomed:

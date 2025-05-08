@@ -5,7 +5,7 @@ var fs = require('fs');
 var path = require('path');
 var os = require('os');
 
-var _FILE = null;
+var _FILE = '';
 var _TEMP = null;
 var _LOCK = null;
 var _BACKUP = null;
@@ -268,6 +268,14 @@ Object.defineProperty(api, 'debug', {
     },
     set: function (value) {
         _debuggingEnabled = (value === true);
+    },
+    enumerable: true,
+    configurable: true
+});
+
+Object.defineProperty(api, 'filename', {
+    get: function () {
+        return _FILE;
     },
     enumerable: true,
     configurable: true

@@ -12,6 +12,7 @@ describe('stow: interface', function() {
         expect(typeof stow.all).toEqual('function');
         expect(typeof stow.clear).toEqual('function');
         expect(typeof stow.debug).toEqual('boolean');
+        expect(typeof stow.filename).toEqual('string');
     });
 
     it('should expose correct methods', function () {
