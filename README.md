@@ -9,7 +9,7 @@ Stow is a simple disk backed key/value store for node.
 ## Install
 
 ```bash
-npm i stow-it
+npm install orca-scan/stow-it
 ```
 
 ## Usage
