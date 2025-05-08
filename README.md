@@ -99,3 +99,4 @@ For change-log, check [releases](https://github.com/orca-scan/stow-it/releases).
 ## TODO
 
 * Add more [Jasmine tests](./tests/) _(PRs welcome)_
+* Ensure `husky` prevents `fit`, `fdescribe` comits
