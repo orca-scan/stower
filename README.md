@@ -2,9 +2,9 @@
 
 [![Tests](https://github.com/orca-scan/stow/actions/workflows/ci.yml/badge.svg)](https://github.com/orca-scan/stow/actions/workflows/ci.yml)
 
-Simple disk based key/value store for Node.js.
+Simple disk based key/value store for node.
 
-Sometimes you just need to **stow** a few values, no database, no fuss. `stow` keeps your data in memory and writes it to disk as a readable JSON file. It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your system’s cache folder.
+**Why?** because sometimes you just need to `stow` a few values, no database, no fuss. `stow` keeps your data in memory and writes it to disk as a readable JSON file. It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your system’s cache folder.
 
 ## Install
 
