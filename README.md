@@ -2,22 +2,9 @@
 
 [![Tests](https://github.com/orca-scan/stow/actions/workflows/ci.yml/badge.svg)](https://github.com/orca-scan/stow/actions/workflows/ci.yml)
 
-Simple disk-persisted key/JSON store for Node.js.
+Simple disk based key/value store for Node.js.
 
-### Key features
-
-* In-memory key/JSON store with disk persistence
-* Atomic writes using temporary files and locks
-* Optional deep equality check on exists
-* Auto-recovery from corrupt JSON files
-* Uses OS-specific cache folder by default
-* Automatic flush to disk on SIGINT and process.exit
-
-### Why stow?
-
-Sometimes you just want to **stow** a few values away for safekeeping, without spinning up a database or pulling in a giant dependency. stow is a dead-simple, reliable way to persist structured data across sessions using a readable JSON file.
-
-Whether it's tokens, user preferences, or a cache of scanned barcodes - just `stow` it.
+Sometimes you just want to **stow** a few values away for safekeeping—without spinning up a database or pulling in a giant dependency. `stow` is a dead-simple, reliable way to persist structured data across sessions using a readable JSON file. It’s an in-memory key/JSON store with disk persistence, atomic writes using temporary files and locks, optional deep equality checks on `exists`, automatic recovery from corrupt JSON files, and safe default storage in the OS-specific cache folder. It also flushes automatically on `SIGINT` and `process.exit`, making it ideal for storing tokens, preferences, or scanned barcode data.
 
 ## Install
 
