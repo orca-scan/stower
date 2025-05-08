@@ -47,6 +47,13 @@ console.log(stow.filename);
 stow.clear();
 ```
 
+### Properties
+
+Property   | Description
+:----------|:-------------------------------------------
+`filename` | Returns filename used so store data on disk
+`debug`    | Get/set debug status _(enables console logs)_
+
 ### Methods
 
 Method                | Description
@@ -58,13 +65,6 @@ Method                | Description
 `remove(key)`         | Deletes a key from the store and schedules the update to disk
 `all()`               | Returns an array of all stored values
 `clear()`             | Deletes all stored data and schedules a save to disk
-
-### Properties
-
-Property   | Description
-:----------|:-------------------------------------------
-`filename` | Returns filename used so store data on disk
-`debug`    | Get/set debug (console logs)
 
 ## Contributing
 
