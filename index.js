@@ -21,7 +21,7 @@ var _debuggingEnabled = false;
 function persist(filename) {
 
     // use OS temp path if no filename provided
-    filename = filename || path.join(getCachePath('stow'), 'stow.json');
+    filename = filename || path.join(getCachePath('stow-it'), 'stow-it.json');
 
     if (path.extname(filename) !== '.json') filename += '.json';
 
@@ -231,7 +231,7 @@ function clear() {
 function log() {
     if (_debuggingEnabled) {
         var args = [].slice.call(arguments);
-        var params = ['[stow] '].concat(args);
+        var params = ['[stow-it] '].concat(args);
         console.log.apply(console, params);
     }
 }

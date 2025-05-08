@@ -1,21 +1,21 @@
-# stow
+# stow-it
 
-[![Tests](https://github.com/orca-scan/stow/actions/workflows/ci.yml/badge.svg)](https://github.com/orca-scan/stow/actions/workflows/ci.yml)
+[![Tests](https://github.com/orca-scan/stow-it/actions/workflows/ci.yml/badge.svg)](https://github.com/orca-scan/stow-it/actions/workflows/ci.yml)
 
 Stow is a simple disk backed key/value store for node.
 
-**Why?** because sometimes you just need to `stow` a few values, no database, no fuss. `stow` keeps your data in memory and writes it to disk as a readable JSON file. It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your system’s cache folder _(if no path provided)_.
+**Why?** because sometimes you just need to `stow-it` a few values, no database, no fuss. `stow-it` keeps your data in memory and writes it to disk as a readable JSON file. It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your system’s cache folder _(if no path provided)_.
 
 ## Install
 
 ```bash
-npm i git+ssh://git@github.com/orca-scan/stow.git
+npm i stow-it
 ```
 
 ## Usage
 
 ```js
-var stow = require('stow');
+var stow = require('stow-it');
 
 // persist to default location
 stow.persist();
@@ -75,15 +75,22 @@ Pull requests are welcomed:
 2. Create your feature branch: `git checkout -b my-new-feature`
 3. Commit your changes: `git commit -m 'Add some feature'`
 4. Push to the branch: `git push origin my-new-feature`
-5. Submit a pull request
+5. Submit a PR
+
+### How to run tests
+
+```bash
+npm i
+npm test
+```
 
 ## Star the repo
 
-If you find this useful ⭐ the repo, it helps me prioritise which bugs to work on.
+If you find this useful ⭐ the repo, it helps us prioritise Open Source issues.
 
 ## History
 
-For change-log, check [releases](https://github.com/orca-scan/stow/releases).
+For change-log, check [releases](https://github.com/orca-scan/stow-it/releases).
 
 ## License
 
@@ -91,4 +98,4 @@ For change-log, check [releases](https://github.com/orca-scan/stow/releases).
 
 ## TODO
 
-* Add more Jasmine tests
+* Add more [Jasmine tests](./tests/) _(PRs welcome)_

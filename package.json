@@ -1,5 +1,5 @@
 {
-  "name": "stow",
+  "name": "stow-it",
   "version": "1.0.0",
   "description": "Simple disk-persisted key-JSON store for Node.js",
   "main": "index.js",
@@ -9,10 +9,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/orca-scan/stow.git"
+    "url": "git+https://github.com/orca-scan/stow-it.git"
   },
   "bugs": {
-    "url": "https://github.com/orca-scan/stow/issues"
+    "url": "https://github.com/orca-scan/stow-it/issues"
   },
   "keywords": [
     "localStorage"
