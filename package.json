@@ -1,7 +1,7 @@
 {
   "name": "stow-it",
   "version": "1.0.0",
-  "description": "Simple disk-persisted key-JSON store for Node.js",
+  "description": "Simple disk backed key/value store for node",
   "main": "index.js",
   "scripts": {
     "test": "NODE_ENV=test node_modules/.bin/jasmine --config=tests/jasmine/config.json",
