@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+# Check for fit / fdescribe before allowing user to commit
+
+alias testfiles='find . -depth 1 -type d -name "*tests" | xargs git diff --cached --name-only $against'
+ 
+if [[ -n $(testfiles) ]]; then
+  if testfiles | xargs grep --with-filename -n -E --regexp="fit\(" --regexp="fdescribe\("; then
+    echo "You forgot to un-F an it/describe!"
+    exit 1
+  fi
+fi

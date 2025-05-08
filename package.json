@@ -4,7 +4,8 @@
   "description": "Simple disk-persisted key-JSON store for Node.js",
   "main": "index.js",
   "scripts": {
-    "test": "NODE_ENV=test node_modules/.bin/jasmine --config=tests/jasmine/config.json"
+    "test": "NODE_ENV=test node_modules/.bin/jasmine --config=tests/jasmine/config.json",
+    "prepare": "husky install"
   },
   "repository": {
     "type": "git",
@@ -23,7 +24,8 @@
     "eslint-config-airbnb-base": "^11.2.0",
     "eslint-plugin-import": "^2.2.0",
     "jasmine": "^4.0.2",
-    "jasmine-console-reporter": "^3.1.0"
+    "jasmine-console-reporter": "^3.1.0",
+    "husky": "^8.0.0"
   },
   "eslintConfig": {
     "extends": "airbnb-base",

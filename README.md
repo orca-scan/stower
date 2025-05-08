@@ -2,11 +2,11 @@
 
 [![Tests](https://github.com/orca-scan/stow/actions/workflows/ci.yml/badge.svg)](https://github.com/orca-scan/stow/actions/workflows/ci.yml)
 
-Simple disk-persisted key-JSON store for Node.js.
+Simple disk-persisted key/JSON store for Node.js.
 
 ### Key features
 
-* In-memory key-JSON store with disk persistence
+* In-memory key/JSON store with disk persistence
 * Atomic writes using temporary files and locks
 * Optional deep equality check on exists
 * Auto-recovery from corrupt JSON files
