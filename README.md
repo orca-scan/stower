@@ -4,9 +4,9 @@
 
 Simple disk based key/value store for Node.js.
 
-Sometimes you just want to **stow** a few values away for safekeeping—without spinning up a database or pulling in a giant dependency. `stow` is a dead-simple, reliable way to persist structured data across sessions using a readable JSON file.
+Sometimes you just need to **stow** a few values, no database, no fuss. `stow` keeps your data in memory and writes it to disk as a readable JSON file.
 
-It’s an in-memory key/JSON store with disk persistence, atomic writes using temporary files and locks, optional deep equality checks on `exists`, automatic recovery from corrupt JSON files, and safe default storage in the OS-specific cache folder. It also flushes automatically on `SIGINT` and `process.exit`, making it ideal for storing tokens, preferences, or scanned barcode data.
+It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your system’s cache folder.
 
 ## Install
 
