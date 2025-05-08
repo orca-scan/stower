@@ -4,7 +4,7 @@
 
 Stow is a simple disk backed key/value store for node.
 
-**Why?** because sometimes you just need to `stow-it` a few values, no database, no fuss. `stow-it` keeps your data in memory and writes it to disk as a readable JSON file. It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your system’s cache folder _(if no path provided)_.
+**Why?** because sometimes you just need to _stow_ a few values, no database, no fuss. `stow-it` keeps your data in memory and writes it to disk as a readable JSON file. It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your system’s cache folder _(if no path provided)_.
 
 ## Install
 
