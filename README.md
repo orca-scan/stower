@@ -50,7 +50,7 @@ stow.clear();
 ### Properties
 
 Property   | Description
-:----------|:-------------------------------------------
+:----------|:---------------------------------------------
 `filename` | Returns filename used so store data on disk
 `debug`    | Get/set debug status _(enables console logs)_
 
@@ -58,13 +58,14 @@ Property   | Description
 
 Method                | Description
 :---------------------|:-----------------------------------------------------------------------------------------------
-`persist([filename])` | Loads previously saved values from disk, or creates a new empty store if the file doesn't exist
-`set(key, value)`     | Stores a value under a given key and schedules it to be saved to disk
 `get(key)`            | Retrieves a value by key, returns `null` if the key doesn't exist
-`exists(key, [val])`  | Checks if a key exists, or optionally if it matches a given value using deep equality
+`set(key, value)`     | Stores a value under a given key and schedules it to be saved to disk
 `remove(key)`         | Deletes a key from the store and schedules the update to disk
-`all()`               | Returns an array of all stored values
+`exists(key, [val])`  | Checks if a key exists, or optionally if it matches a given value using deep equality
+`keys()`              | Returns an array of all stored keys
+`values()`            | Returns an array of all stored values
 `clear()`             | Deletes all stored data and schedules a save to disk
+`persist([filename])` | Loads previously saved values from disk, or creates a new empty store if the file doesn't exist
 
 ## Contributing
 

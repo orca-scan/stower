@@ -198,13 +198,21 @@ function exists(name, obj) {
  * Return all values
  * @returns {Array} - Array of all stored values
  */
-function all() {
+function values() {
     var out = [];
-    var keys = Object.keys(_store);
-    for (var i = 0; i < keys.length; i++) {
-        out.push(_store[keys[i]]);
+    var keysInStore = Object.keys(_store);
+    for (var i = 0; i < keysInStore.length; i++) {
+        out.push(_store[keysInStore[i]]);
     }
     return out;
+}
+
+/**
+ * Return all keys
+ * @returns {Array} - Array of all stored keys
+ */
+function keys() {
+    return Object.keys(_store);
 }
 
 /**
@@ -254,8 +262,9 @@ var api = {
     get: get,
     set: set,
     remove: remove,
-    all: all,
     exists: exists,
+    keys: keys,
+    values: values,
     clear: clear,
     persist: persist
 };

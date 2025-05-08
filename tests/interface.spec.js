@@ -9,7 +9,8 @@ describe('stow: interface', function() {
         expect(typeof stow.remove).toEqual('function');
         expect(typeof stow.exists).toEqual('function');
         expect(typeof stow.persist).toEqual('function');
-        expect(typeof stow.all).toEqual('function');
+        expect(typeof stow.keys).toEqual('function');
+        expect(typeof stow.values).toEqual('function');
         expect(typeof stow.clear).toEqual('function');
         expect(typeof stow.debug).toEqual('boolean');
         expect(typeof stow.filename).toEqual('string');
@@ -21,7 +22,8 @@ describe('stow: interface', function() {
         expect(stow.remove).toBeDefined();
         expect(stow.exists).toBeDefined();
         expect(stow.persist).toBeDefined();
-        expect(stow.all).toBeDefined();
+        expect(stow.keys).toBeDefined();
+        expect(stow.values).toBeDefined();
         expect(stow.clear).toBeDefined();
     });
 });
