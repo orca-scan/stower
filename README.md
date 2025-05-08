@@ -88,3 +88,7 @@ For change-log, check [releases](https://github.com/orca-scan/stow/releases).
 ## License
 
 [MIT License](LICENSE) © Orca Scan - a [barcode app](https://orcascan.com) with simple [barcode tracking APIs](https://orcascan.com/guides?tag=for-developers).
+
+## TODO
+
+* Add more Jasmine tests
