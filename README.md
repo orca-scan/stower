@@ -18,7 +18,7 @@ npm install orca-scan/stow-it
 var stow = require('stow-it');
 
 // persist (optional JSON file path)
-stow.persist('./stash.json');
+stow.persist('./stow.json');
 
 // enable debugging
 stow.debug = true;
