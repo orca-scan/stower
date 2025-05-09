@@ -70,6 +70,8 @@ Method              | Description
 `clear()`           | Deletes all stored data and schedules a save to disk
 `persist(filename)` | Loads previously saved values from disk and auto saves changes _(optional filename)_
 
+Note: if `persist()` is not called, values only exist in memory.
+
 ## Contributing
 
 Pull requests are welcomed:
