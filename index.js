@@ -245,7 +245,7 @@ function getCachePath(moduleName) {
     var base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
     var dir = path.join(base, moduleName);
     if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir);
+        fs.mkdirSync(dir, { recursive: true });
     }
     return dir;
 }
