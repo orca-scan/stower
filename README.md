@@ -89,9 +89,9 @@ npm i
 npm test
 ```
 
-## Star the repo
+### Star the repo
 
-If you find this useful ⭐ the repo, it helps us prioritise Open Source work.
+If you find this useful please star the repo, it helps us prioritise Open Source work.
 
 ## History
 
