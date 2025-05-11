@@ -1,53 +1,53 @@
-# stow-it
+# stower
 
-[![Tests](https://github.com/orca-scan/stow-it/actions/workflows/ci.yml/badge.svg)](https://github.com/orca-scan/stow-it/actions/workflows/ci.yml)
+[![Tests](https://github.com/orca-scan/stower/actions/workflows/ci.yml/badge.svg)](https://github.com/orca-scan/stower/actions/workflows/ci.yml)
 
-Stow-it is a simple disk backed key/value store for node.
+Stower is a simple disk backed key/value store for node.
 
-**Why?** because sometimes you just need to _stow_ a few values, no database, no fuss. `stow-it` keeps your data in memory and writes it to disk as a readable JSON file in the background. It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your systems cache folder _(when no path provided)_.
+**Why?** because sometimes you just need to _stow_ a few values, no database, no fuss. `stower` keeps your data in memory and writes it to disk as a readable JSON file in the background. It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your systems cache folder _(when no path provided)_.
 
 ## Install
 
 ```bash
-npm install orca-scan/stow-it
+npm install orca-scan/stower
 ```
 
 ## Usage
 
 ```js
-var stow = require('stow-it');
+var stower = require('stower');
 
 // persist (optional JSON file path)
-stow.persist('./stow.json');
+stower.persist('./stow.json');
 
-// enable debugging
-stow.debug = true;
+// enable debugging (console logs)
+stower.debug = true;
 
 // store some data
-stow.set('token', { id: '123', key: 'abc' });
+stower.set('token', { id: '123', key: 'abc' });
 
 // retrieve it
-var token = stow.get('token');
+var token = stower.get('token');
 
 // check it exists
-if (stow.exists('token')) {
+if (stower.exists('token')) {
     console.log('token exists');
 }
 
 // remove it
-stow.remove('token');
+stower.remove('token');
 
 // view all keys
-console.log(stow.keys());
+console.log(stower.keys());
 
 // view all values
-console.log(stow.values());
+console.log(stower.values());
 
 // get the JSON file name and path
-console.log(stow.filename);
+console.log(stower.filename);
 
 // clear everything
-stow.clear();
+stower.clear();
 ```
 
 ### Properties
@@ -74,28 +74,25 @@ Note: if `persist()` is not called, values only exist in memory.
 
 ## Contributing
 
-Pull requests are welcomed:
+As alwaysm, pull requests are welcomed - but please ensure you provide a test where necesssary.
 
-1. Fork it!
-2. Create your feature branch: `git checkout -b my-new-feature`
-3. Commit your changes: `git commit -m 'Add some feature'`
-4. Push to the branch: `git push origin my-new-feature`
-5. Submit a PR
+### Tests
 
-### How to run tests
+You can run the tests using the following:
 
 ```bash
+cd stower
 npm i
 npm test
 ```
 
-### Star the repo
+### Star
 
 If you find this useful please star the repo, it helps us prioritise Open Source work.
 
 ## History
 
-For change-log, check [releases](https://github.com/orca-scan/stow-it/releases).
+For change-log, check [releases](https://github.com/orca-scan/stower/releases).
 
 ## License
 
@@ -104,4 +101,3 @@ For change-log, check [releases](https://github.com/orca-scan/stow-it/releases).
 ## TODO
 
 * Add more [Jasmine tests](./tests/) _(PRs welcome)_
-* Ensure `husky` prevents `fit`, `fdescribe` comits

@@ -1,29 +1,21 @@
 /* eslint-disable import/extensions */
-var stow = require('../index.js');
+var stower = require('../index.js');
 
-describe('stow: interface', function() {
+describe('stower: interface', function() {
 
-    it('should expose correct interface', function () {
-        expect(typeof stow.get).toEqual('function');
-        expect(typeof stow.set).toEqual('function');
-        expect(typeof stow.remove).toEqual('function');
-        expect(typeof stow.exists).toEqual('function');
-        expect(typeof stow.persist).toEqual('function');
-        expect(typeof stow.keys).toEqual('function');
-        expect(typeof stow.values).toEqual('function');
-        expect(typeof stow.clear).toEqual('function');
-        expect(typeof stow.debug).toEqual('boolean');
-        expect(typeof stow.filename).toEqual('string');
+    it('should expose correct properties', function () {
+        expect(typeof stower.debug).toEqual('boolean');
+        expect(typeof stower.filename).toEqual('string');
     });
 
     it('should expose correct methods', function () {
-        expect(stow.get).toBeDefined();
-        expect(stow.set).toBeDefined();
-        expect(stow.remove).toBeDefined();
-        expect(stow.exists).toBeDefined();
-        expect(stow.persist).toBeDefined();
-        expect(stow.keys).toBeDefined();
-        expect(stow.values).toBeDefined();
-        expect(stow.clear).toBeDefined();
+        expect(typeof stower.get).toEqual('function');
+        expect(typeof stower.set).toEqual('function');
+        expect(typeof stower.remove).toEqual('function');
+        expect(typeof stower.exists).toEqual('function');
+        expect(typeof stower.persist).toEqual('function');
+        expect(typeof stower.keys).toEqual('function');
+        expect(typeof stower.values).toEqual('function');
+        expect(typeof stower.clear).toEqual('function');
     });
 });
