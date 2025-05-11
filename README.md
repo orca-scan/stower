@@ -1,6 +1,8 @@
 # stower
 
+[![license](https://img.shields.io/github/license/orca-scan/stower)](https://github.com/orca-scan/stower/blob/master/LICENSE)
 [![Tests](https://github.com/orca-scan/stower/actions/workflows/ci.yml/badge.svg)](https://github.com/orca-scan/stower/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/stower)](https://www.npmjs.com/package/stower)
 
 Stower is a simple disk backed key/value store for node.
 
