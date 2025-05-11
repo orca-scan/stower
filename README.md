@@ -9,7 +9,7 @@ Stower is a simple disk backed key/value store for node.
 ## Install
 
 ```bash
-npm install orca-scan/stower
+npm install stower
 ```
 
 ## Usage
@@ -74,17 +74,11 @@ Note: if `persist()` is not called, values only exist in memory.
 
 ## Contributing
 
-As alwaysm, pull requests are welcomed - but please ensure you provide a test where necesssary.
+As always, pull requests are welcomed - but please ensure you provide a test where necesssary.
 
 ### Tests
 
-You can run the tests using the following:
-
-```bash
-cd stower
-npm i
-npm test
-```
+You can run the tests using `npm test`
 
 ### Star
 
