@@ -25,8 +25,9 @@ describe('stower: methods', function () {
         }
     });
 
-    it('should create storage on disk and persist data', async function () {
-        stower.persist(filepath);
+    it('should create use provided storage on disk and persist data', async function () {
+
+        stower.persist(filepath); // use dev provided storage folder
         stower.set('foo', { bar: 'baz' });
 
         await wait(1500); // wait for async save
@@ -35,6 +36,20 @@ describe('stower: methods', function () {
         expect(exists).toBe(true);
 
         var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        expect(content.foo.bar).toBe('baz');
+    });
+
+    it('should create os based storage on disk and persist data', async function () {
+
+        stower.persist(); // uses OS based temp storage folder
+        stower.set('foo', { bar: 'baz' });
+
+        await wait(1500); // wait for async save
+
+        var exists = fs.existsSync(stower.filename);
+        expect(exists).toBe(true);
+
+        var content = JSON.parse(fs.readFileSync(stower.filename, 'utf8'));
         expect(content.foo.bar).toBe('baz');
     });
 });
