@@ -25,6 +25,9 @@ function persist(filename) {
 
     if (path.extname(filename) !== '.json') filename += '.json';
 
+    // create file & folders if it does not exist
+    if (!fs.existsSync(filename)) fs.mkdirSync(filename, { recursive: true });
+
     _FILE = path.resolve(filename);
     _TEMP = _FILE + '.tmp';
     _LOCK = _FILE + '.lock';
@@ -244,9 +247,6 @@ function log() {
 function getCachePath(moduleName) {
     var base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
     var dir = path.join(base, moduleName);
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-    }
     return dir;
 }
 
