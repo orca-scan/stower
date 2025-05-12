@@ -1,6 +1,6 @@
 {
   "name": "stower",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Simple disk backed key/value store for node",
   "main": "index.js",
   "scripts": {
@@ -13,6 +13,7 @@
   "bugs": {
     "url": "https://github.com/orca-scan/stower/issues"
   },
+  "homepage": "https://orcascan.com/guides?tag=for-developers",
   "keywords": [
     "localStorage"
   ],
