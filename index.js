@@ -49,7 +49,22 @@ function persist(filename) {
         log('loaded', Object.keys(_store).length, 'items');
     }
     catch (e) {
-        if (fs.existsSync(_FILE)) fs.renameSync(_FILE, _BACKUP);
+
+        if (e.code === 'EACCES') {
+            console.error('[stower] permission denied:', _FILE);
+            throw e;
+        }
+
+        if (fs.existsSync(_FILE)) {
+            try {
+                fs.renameSync(_FILE, _BACKUP);
+                console.error('[stower] corrupt file backed up:', _BACKUP);
+            }
+            catch (renameErr) {
+                console.error('[stower] failed to backup corrupt file:', _FILE);
+            }
+        }
+
         _store = Object.create(null);
         log('failed to load, backup created');
     }
