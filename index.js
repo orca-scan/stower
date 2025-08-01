@@ -26,7 +26,18 @@ function persist(filename) {
     if (path.extname(filename) !== '.json') filename += '.json';
 
     // create file & folders if it does not exist
-    if (!fs.existsSync(filename)) fs.mkdirSync(filename, { recursive: true });
+    if (!fs.existsSync(filename)) {
+        var dir = path.dirname(filename);
+        try {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        catch (e) {
+            console.error('[stower] failed to create directory:', dir);
+            console.error('[stower] target file path:', filename);
+            console.error('[stower] error:', e.message);
+            throw e;
+        }
+    }
 
     _FILE = path.resolve(filename);
     _TEMP = _FILE + '.tmp';
