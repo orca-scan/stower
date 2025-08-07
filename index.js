@@ -14,60 +14,92 @@ var _timer = null;
 var _debuggingEnabled = false;
 
 /**
- * Persist to disk
- * @param {string} [filename] - optional path to json file
+ * Persist to disk with retry if path is not yet writable
+ * @param {string} [filename] - optional relative or absolute path to json file
  * @returns {void}
  */
 function persist(filename) {
-
     // use OS temp path if no filename provided
     filename = filename || path.join(getCachePath('stower'), 'data.json');
 
+    // ensure .json extension
     if (path.extname(filename) !== '.json') filename += '.json';
 
-    // create file & folders if it does not exist
-    if (!fs.existsSync(filename)) {
-        var dir = path.dirname(filename);
-        try {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        catch (e) {
-            console.error('[stower] failed to create directory:', dir);
-            console.error('[stower] target file path:', filename);
-            console.error('[stower] error:', e.message);
-            throw e;
-        }
-    }
-
+    // always resolve to absolute path
     _FILE = path.resolve(filename);
     _TEMP = _FILE + '.tmp';
     _LOCK = _FILE + '.lock';
     _BACKUP = _FILE + '.corrupt';
 
-    try {
-        _store = JSON.parse(fs.readFileSync(_FILE, 'utf8'));
-        log('loaded', Object.keys(_store).length, 'items');
-    }
-    catch (e) {
+    var dir = path.dirname(_FILE);
+    log('persist:', _FILE);
 
-        if (e.code === 'EACCES') {
-            console.error('[stower] permission denied:', _FILE);
+    // retry loop if directory isn't ready
+    var attempts = 0;
+    var maxAttempts = 10;
+
+    function tryInit() {
+        attempts++;
+
+        try {
+            // ensure directory exists
+            if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+            }
+
+            // test write permission
+            fs.accessSync(dir, fs.constants.W_OK);
+        } catch (e) {
+            if (attempts < maxAttempts) {
+                log('waiting for path:', dir, '| attempts left:', maxAttempts - attempts);
+                return setTimeout(tryInit, 300);
+            }
+
+            log('failed to create directory:', dir);
+            log('error:', e.message);
             throw e;
         }
 
-        if (fs.existsSync(_FILE)) {
+        // remove stale lock file if older than 10s
+        if (fs.existsSync(_LOCK)) {
             try {
-                fs.renameSync(_FILE, _BACKUP);
-                console.error('[stower] corrupt file backed up:', _BACKUP);
-            }
-            catch (renameErr) {
-                console.error('[stower] failed to backup corrupt file:', _FILE);
+                var stat = fs.statSync(_LOCK);
+                var age = Date.now() - new Date(stat.mtime).getTime();
+                if (age > 10000) {
+                    fs.unlinkSync(_LOCK);
+                    log('removed stale lock file');
+                }
+            } catch (e) {
+                log('failed to check/remove stale lock:', e.message);
             }
         }
 
-        _store = Object.create(null);
-        log('failed to load, backup created');
+        // try loading existing data
+        try {
+            var json = fs.readFileSync(_FILE, 'utf8');
+            _store = JSON.parse(json);
+            log('loaded', Object.keys(_store).length, 'items');
+        } catch (e) {
+            if (e.code === 'EACCES') {
+                log('permission denied:', _FILE);
+                throw e;
+            }
+
+            if (fs.existsSync(_FILE)) {
+                try {
+                    fs.renameSync(_FILE, _BACKUP);
+                    log('corrupt file backed up:', _BACKUP);
+                } catch (renameErr) {
+                    log('failed to backup corrupt file:', _FILE);
+                }
+            }
+
+            _store = Object.create(null);
+            log('failed to load, backup created');
+        }
     }
+
+    tryInit();
 }
 
 /**
@@ -104,22 +136,40 @@ function deepEqual(a, b) {
 
 /**
  * Create lock with retry
- * @param {Function} cb - cllback on lock
+ * @param {Function} cb - callback on lock
  * @param {number} attempt - retry count
- * @returns {void} - qcquires file lock or retries
+ * @returns {void}
  */
 function lock(cb, attempt) {
     attempt = attempt || 0;
+
     try {
         var fd = fs.openSync(_LOCK, 'wx');
         fs.closeSync(fd);
         cb();
     }
     catch (e) {
+        if (e.code === 'EEXIST') {
+            try {
+                var stat = fs.statSync(_LOCK);
+                var ageMs = Date.now() - new Date(stat.mtime).getTime();
+
+                if (ageMs > 10000) {
+                    fs.unlinkSync(_LOCK);
+                    log('stale lock removed');
+                    return lock(cb, attempt + 1);
+                }
+            }
+            catch (statErr) {
+                log('lock stat failed:', statErr.message);
+            }
+        }
+
         if (attempt > 10) {
             log('lock failed');
             return;
         }
+
         setTimeout(function () {
             lock(cb, attempt + 1);
         }, 100 + Math.random() * 100);
@@ -128,21 +178,20 @@ function lock(cb, attempt) {
 
 /**
  * Remove lock file
- * @returns {void} - deletes lock file if present
+ * @returns {void}
  */
 function unlock() {
     try {
         fs.unlinkSync(_LOCK);
-    }
-    catch (e) {
-        log('unlock failed', e);
+    } catch (e) {
+        log('unlock failed', e.message);
     }
 }
 
 /**
  * Write to disk with lock
  * @param {Function} done - callback after write
- * @returns {void} - saves current store to disk
+ * @returns {void}
  */
 function write(done) {
     if (!_FILE) return;
@@ -152,9 +201,8 @@ function write(done) {
             fs.writeFileSync(_TEMP, json);
             fs.renameSync(_TEMP, _FILE);
             log('saved', Object.keys(_store).length, 'items');
-        }
-        catch (e) {
-            log('write failed', e);
+        } catch (e) {
+            log('write failed', e.message);
         }
         unlock();
         if (done) done();
@@ -163,7 +211,7 @@ function write(done) {
 
 /**
  * Schedule save
- * @returns {void} - defers disk write by timeout
+ * @returns {void}
  */
 function save() {
     clearTimeout(_timer);
@@ -172,7 +220,7 @@ function save() {
 
 /**
  * Flush to disk immediately
- * @returns {void} - writes store to disk right away
+ * @returns {void}
  */
 function flush() {
     clearTimeout(_timer);
@@ -183,7 +231,7 @@ function flush() {
  * Set item
  * @param {string} name - Key name
  * @param {Object} value - Value to store
- * @returns {void} - Stores key and schedules save
+ * @returns {void}
  */
 function set(name, value) {
     if (!name || !value) return;
@@ -194,7 +242,7 @@ function set(name, value) {
 /**
  * Get item
  * @param {string} name - Key name
- * @returns {Object|null} - Stored value or null
+ * @returns {Object|null}
  */
 function get(name) {
     return _store[key(name)] || null;
@@ -214,7 +262,7 @@ function remove(name) {
  * Check If Key Exists Or Matches Value
  * @param {string} name - Key name
  * @param {Object} [obj] - Optional value to match
- * @returns {boolean} - True if key exists or matches
+ * @returns {boolean}
  */
 function exists(name, obj) {
     var val = _store[key(name)];
@@ -225,7 +273,7 @@ function exists(name, obj) {
 
 /**
  * Return all values
- * @returns {Array} - Array of all stored values
+ * @returns {Array}
  */
 function values() {
     var out = [];
@@ -238,7 +286,7 @@ function values() {
 
 /**
  * Return all keys
- * @returns {Array} - Array of all stored keys
+ * @returns {Array}
  */
 function keys() {
     return Object.keys(_store);
@@ -267,13 +315,12 @@ function log() {
 
 /**
  * Get a safe writable cache directory for a module
- * @param {string} moduleName - Name of the module to use as the cache folder
- * @returns {string} - Absolute path to the cache directory
+ * @param {string} moduleName - Module name
+ * @returns {string}
  */
 function getCachePath(moduleName) {
     var base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
-    var dir = path.join(base, moduleName);
-    return dir;
+    return path.join(base, moduleName);
 }
 
 process.on('exit', flush);
