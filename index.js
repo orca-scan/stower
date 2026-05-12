@@ -5,12 +5,9 @@
  * stower — a simple persistent key/value store backed by a JSON file.
  *
  * Design overview:
- * - Keep a fast in-memory view for all reads.
- * - Track pending writes as a tiny operation overlay (set/remove per key).
- * - On write: lock file -> read latest disk state -> replay overlay -> atomic commit.
- *
- * This keeps logic easy to reason about and preserves correctness when many
- * processes/containers share one file.
+ * - Keep a fast in-memory view for all reads
+ * - Track pending writes as a tiny operation overlay (set/remove per key)
+ * - On write: lock file -> read latest disk state -> replay overlay -> atomic commit
  */
 
 var fs = require('fs');
