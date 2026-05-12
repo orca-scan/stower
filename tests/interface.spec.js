@@ -18,4 +18,16 @@ describe('stower: interface', function() {
         expect(typeof stower.values).toEqual('function');
         expect(typeof stower.clear).toEqual('function');
     });
+
+    it('logs wrapped method calls when debug is enabled', function () {
+        var originalDebug = stower.debug;
+        var logSpy = spyOn(console, 'log');
+
+        stower.debug = true;
+        stower.get('token');
+
+        expect(logSpy).toHaveBeenCalledWith('[stower]', 'get', ['token']);
+
+        stower.debug = originalDebug;
+    });
 });
