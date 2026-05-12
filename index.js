@@ -1,6 +1,41 @@
 /* eslint-disable no-console */
 /* eslint-disable prefer-rest-params */
 
+/*
+ * stower — a simple persistent key/value store backed by a JSON file.
+ *
+ * How it works:
+ *  1. Call persist(filename) once at startup to point the store at a JSON file.
+ *     The file and its parent directory are created automatically if missing.
+ *  2. Use set/get/remove/exists/keys/values/clear for day-to-day access.
+ *  3. Reads (get, exists, keys, values) call load() first, which re-reads the
+ *     file from disk only when its mtime has changed — cheap for the common case.
+ *  4. Writes are debounced: set/remove/clear schedule a 1 s timer; the timer
+ *     fires write(), which acquires a lock, merges dirty keys onto the current
+ *     disk state, and commits atomically (write-to-temp → rename).
+ *  5. On process exit / SIGINT / SIGTERM the pending timer is cancelled and
+ *     write() is called synchronously so no data is lost.
+ *
+ * Multi-process safety:
+ *  - proper-lockfile provides cross-process mutual exclusion during writes.
+ *  - Each process tracks its own "dirty" keys and re-applies them on top of
+ *    any freshly loaded disk state, so a concurrent write from another process
+ *    never clobbers pending in-memory changes.
+ *
+ * TTL / expiry:
+ *  - set(key, value, expiresInSeconds) stores an expiry timestamp alongside the
+ *    value. Expired keys are invisible to reads and are pruned from disk on the
+ *    next write. Re-setting a key without a TTL clears any existing expiry.
+ *
+ * Constraints:
+ *  - Keys are normalised to trimmed lowercase — 'FOO' and 'foo' are the same key.
+ *  - null / undefined values are silently ignored by set().
+ *  - '__expires__' is a reserved key used to persist TTL data; it cannot be set.
+ *  - Atomic rename() is POSIX-only — behaviour on Windows is best-effort.
+ *  - The 1 s debounce means very recent writes can be lost if the process is
+ *    killed with SIGKILL (untrappable) or a hard power-off occurs.
+ */
+
 /* ─────────────────────────────────────────────
    Dependencies
 ───────────────────────────────────────────── */
