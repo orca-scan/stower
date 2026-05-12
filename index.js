@@ -409,6 +409,7 @@ function reapplyDirtyKeys(oldStore, oldExpires) {
  */
 function load() {
     if (!_FILE) return;
+    if (_clearPending) return;
 
     try {
         var mtime = fs.statSync(_FILE).mtimeMs;
