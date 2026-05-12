@@ -6,7 +6,7 @@
 
 Stower is a simple disk backed key/value store for node.
 
-**Why?** because sometimes you just need to _stow_ a few values, no database, no fuss. `stower` keeps your data in memory and writes it to disk as a readable JSON file in the background. It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your systems cache folder _(when no path provided)_.
+**Why?** because sometimes you just need to _stow_ a few values, no database. `stower` keeps your data in memory and writes it to disk as a readable JSON file in the background. It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your systems cache folder _(when no path provided)_. Safe for use across multiple processes or Docker containers sharing the same file.
 
 ## Install
 
@@ -27,6 +27,9 @@ stower.debug = true;
 
 // store some data
 stower.set('token', { id: '123', key: 'abc' });
+
+// store with a TTL (expires after 60 seconds)
+stower.set('session', { user: 'alice' }, 60);
 
 // retrieve it
 var token = stower.get('token');
@@ -61,16 +64,16 @@ Property   | Description
 
 ### Methods
 
-Method              | Description
-:-------------------|:-------------------------------------------------------------------------------------
-`get(key)`          | Retrieves a value by key, returns `null` if the key doesn't exist
-`set(key, value)`   | Stores a value and schedules it to be saved to disk
-`remove(key)`       | Deletes a key from the store and schedules the update to disk
-`exists(key, val)`  | Checks if a key exists and optionally if it matches a given value using deep equality
-`keys()`            | Returns an array of all stored keys
-`values()`          | Returns an array of all stored values
-`clear()`           | Deletes all stored data and schedules a save to disk
-`persist(filename)` | Loads previously saved values from disk and auto saves changes _(optional filename)_
+Method                              | Description
+:-----------------------------------|:--------------------------------------------------------------------------------------------------------------------------
+`get(key)`                          | Retrieves a value by key, returns `null` if the key doesn't exist
+`set(key, value, expiresInSeconds)` | Stores a value and schedules it to be saved to disk. Pass an optional `expiresInSeconds` to automatically expire the entry
+`remove(key)`                       | Deletes a key from the store and schedules the update to disk
+`exists(key, val)`                  | Checks if a key exists and optionally if it matches a given value using deep equality
+`keys()`                            | Returns an array of all stored keys
+`values()`                          | Returns an array of all stored values
+`clear()`                           | Deletes all stored data and schedules a save to disk
+`persist(filename)`                 | Loads previously saved values from disk and auto saves changes _(optional filename)_
 
 Note: if `persist()` is not called, values only exist in memory.
 
