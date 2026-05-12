@@ -85,6 +85,8 @@ As always, pull requests are welcomed - but please ensure you provide a test whe
 
 You can run the tests using `npm test`
 
+To run tests with coverage and enforce thresholds, use `npm run test:coverage`
+
 ### Star
 
 If you find this useful please star the repo, it helps us prioritise Open Source work.
