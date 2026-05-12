@@ -483,7 +483,7 @@ function acquireLock() {
  * Merge this process's dirty changes on top of the current disk state, prune
  * expired entries, and serialise the result to JSON.
  * Pure computation — reads module state but does not mutate it.
- * @returns {{ data: Object, json: string, expires: Object }}
+ * @returns {{ data: Object, json: string, expires: Object }} - Merged data, its JSON string, and the merged expiry map
  */
 function mergeAndSerialize() {
     var data = _clearPending ? Object.create(null) : readFromDisk();
