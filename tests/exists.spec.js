@@ -219,6 +219,15 @@ describe('stower: exists', function () {
         expect(stower.exists('disk')).toBe(true);
     });
 
+    it('should detect keys written by another process after mtime changes', async function () {
+        stower.set('mine', { v: 1 });
+        await wait(1500);
+
+        fs.writeFileSync(filepath, JSON.stringify({ mine: { v: 1 }, external: { v: 2 } }, null, 2));
+
+        expect(stower.exists('external')).toBe(true);
+    });
+
     it('should return false for a key that was removed before the file was reloaded', async function () {
         stower.set('transient', { v: 1 });
         stower.remove('transient');
