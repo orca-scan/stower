@@ -10,6 +10,7 @@ var _TEMP = null;
 var _LOCK = null;
 var _BACKUP = null;
 var _store = Object.create(null);
+var _expiry = Object.create(null);
 var _timer = null;
 var _debuggingEnabled = false;
 
@@ -49,7 +50,8 @@ function persist(filename) {
 
             // test write permission
             fs.accessSync(dir, fs.constants.W_OK);
-        } catch (e) {
+        }
+        catch (e) {
             if (attempts < maxAttempts) {
                 log('waiting for path:', dir, '| attempts left:', maxAttempts - attempts);
                 return setTimeout(tryInit, 300);
@@ -69,7 +71,8 @@ function persist(filename) {
                     fs.unlinkSync(_LOCK);
                     log('removed stale lock file');
                 }
-            } catch (e) {
+            }
+            catch (e) {
                 log('failed to check/remove stale lock:', e.message);
             }
         }
@@ -78,8 +81,19 @@ function persist(filename) {
         try {
             var json = fs.readFileSync(_FILE, 'utf8');
             _store = JSON.parse(json);
+
+            // extract persisted expiry data
+            if (_store['__expiry__']) {
+                _expiry = _store['__expiry__'];
+                delete _store['__expiry__'];
+            }
+            else {
+                _expiry = Object.create(null);
+            }
+
             log('loaded', Object.keys(_store).length, 'items');
-        } catch (e) {
+        }
+        catch (e) {
             if (e.code === 'EACCES') {
                 log('permission denied:', _FILE);
                 throw e;
@@ -95,6 +109,7 @@ function persist(filename) {
             }
 
             _store = Object.create(null);
+            _expiry = Object.create(null);
             log('failed to load, backup created');
         }
     }
@@ -109,6 +124,15 @@ function persist(filename) {
  */
 function key(str) {
     return String(str || '').trim().toLowerCase();
+}
+
+/**
+ * Check if a key has expired
+ * @param {string} k - Normalized key
+ * @returns {boolean} - true if key has a TTL and it has passed
+ */
+function isExpired(k) {
+    return (k in _expiry) && Date.now() > _expiry[k];
 }
 
 /**
@@ -183,7 +207,8 @@ function lock(cb, attempt) {
 function unlock() {
     try {
         fs.unlinkSync(_LOCK);
-    } catch (e) {
+    }
+    catch (e) {
         log('unlock failed', e.message);
     }
 }
@@ -197,11 +222,17 @@ function write(done) {
     if (!_FILE) return;
     lock(function () {
         try {
-            var json = JSON.stringify(_store, null, 2);
+            // build a copy that includes expiry data for persistence
+            var data = Object.assign(Object.create(null), _store);
+            if (Object.keys(_expiry).length > 0) {
+                data['__expiry__'] = _expiry;
+            }
+            var json = JSON.stringify(data, null, 2);
             fs.writeFileSync(_TEMP, json);
             fs.renameSync(_TEMP, _FILE);
             log('saved', Object.keys(_store).length, 'items');
-        } catch (e) {
+        }
+        catch (e) {
             log('write failed', e.message);
         }
         unlock();
@@ -231,11 +262,27 @@ function flush() {
  * Set item
  * @param {string} name - Key name
  * @param {Object} value - Value to store
+ * @param {number} [ttlMs] - Optional time-to-live in milliseconds
  * @returns {void}
  */
-function set(name, value) {
+function set(name, value, ttlMs) {
     if (!name || !value) return;
-    _store[key(name)] = value;
+
+    var k = key(name);
+
+    // __expiry__ is a reserved key used for persisting TTL data
+    if (k === '__expiry__') return;
+
+    _store[k] = value;
+
+    // set or clear the expiry for this key
+    if (typeof ttlMs === 'number' && ttlMs > 0) {
+        _expiry[k] = Date.now() + ttlMs;
+    }
+    else {
+        delete _expiry[k];
+    }
+
     save();
 }
 
@@ -245,7 +292,17 @@ function set(name, value) {
  * @returns {Object|null}
  */
 function get(name) {
-    return _store[key(name)] || null;
+    var k = key(name);
+
+    // remove expired entries on access
+    if (isExpired(k)) {
+        delete _store[k];
+        delete _expiry[k];
+        save();
+        return null;
+    }
+
+    return _store[k] || null;
 }
 
 /**
@@ -254,7 +311,9 @@ function get(name) {
  * @returns {void}
  */
 function remove(name) {
-    delete _store[key(name)];
+    var k = key(name);
+    delete _store[k];
+    delete _expiry[k];
     save();
 }
 
@@ -265,7 +324,17 @@ function remove(name) {
  * @returns {boolean}
  */
 function exists(name, obj) {
-    var val = _store[key(name)];
+    var k = key(name);
+
+    // treat expired entries as non-existent
+    if (isExpired(k)) {
+        delete _store[k];
+        delete _expiry[k];
+        save();
+        return false;
+    }
+
+    var val = _store[k];
     if (!val) return false;
     if (!obj) return true;
     return deepEqual(val, obj);
@@ -279,7 +348,9 @@ function values() {
     var out = [];
     var keysInStore = Object.keys(_store);
     for (var i = 0; i < keysInStore.length; i++) {
-        out.push(_store[keysInStore[i]]);
+        if (!isExpired(keysInStore[i])) {
+            out.push(_store[keysInStore[i]]);
+        }
     }
     return out;
 }
@@ -289,7 +360,14 @@ function values() {
  * @returns {Array}
  */
 function keys() {
-    return Object.keys(_store);
+    var allKeys = Object.keys(_store);
+    var out = [];
+    for (var i = 0; i < allKeys.length; i++) {
+        if (!isExpired(allKeys[i])) {
+            out.push(allKeys[i]);
+        }
+    }
+    return out;
 }
 
 /**
@@ -298,6 +376,7 @@ function keys() {
  */
 function clear() {
     _store = Object.create(null);
+    _expiry = Object.create(null);
     save();
 }
 
