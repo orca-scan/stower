@@ -253,35 +253,35 @@ function write(done) {
         else {
             // read the latest disk state so we can merge into it
             data = readFromDisk();
-
-            // apply this process's changes on top of what's on disk:
-            // dirty keys are ones we set or removed since the last write
-            var dirtyKeys = Object.keys(_dirty);
-            for (var i = 0; i < dirtyKeys.length; i++) {
-                var k = dirtyKeys[i];
-                if (_store[k] !== undefined) {
-                    // key was set — overwrite disk copy
-                    data[k] = _store[k];
-                }
-                else {
-                    // key was removed — delete from disk copy
-                    delete data[k];
-                }
-            }
-
-            // merge expiry timestamps for dirty keys only
-            var diskExpires = data.__expires__ || Object.create(null);
-            for (var j = 0; j < dirtyKeys.length; j++) {
-                var ek = dirtyKeys[j];
-                if (_expires[ek] !== undefined) {
-                    diskExpires[ek] = _expires[ek];
-                }
-                else {
-                    delete diskExpires[ek];
-                }
-            }
-            _expires = diskExpires;
         }
+
+        // apply this process's dirty keys on top of the baseline (cleared or disk):
+        // dirty keys are ones we set or removed since the last write
+        var dirtyKeys = Object.keys(_dirty);
+        for (var i = 0; i < dirtyKeys.length; i++) {
+            var k = dirtyKeys[i];
+            if (_store[k] !== undefined) {
+                // key was set — overwrite disk copy
+                data[k] = _store[k];
+            }
+            else {
+                // key was removed — delete from disk copy
+                delete data[k];
+            }
+        }
+
+        // merge expiry timestamps for dirty keys only
+        var diskExpires = data.__expires__ || Object.create(null);
+        for (var j = 0; j < dirtyKeys.length; j++) {
+            var ek = dirtyKeys[j];
+            if (_expires[ek] !== undefined) {
+                diskExpires[ek] = _expires[ek];
+            }
+            else {
+                delete diskExpires[ek];
+            }
+        }
+        _expires = diskExpires;
 
         // remove any expired entries before saving
         var now = Date.now();
@@ -424,7 +424,7 @@ function exists(name, obj) {
     var k = key(name);
     if (isExpired(k)) return false;
     if (!Object.prototype.hasOwnProperty.call(_store, k)) return false;
-    if (!obj) return true;
+    if (arguments.length < 2) return true;
     var val = _store[k];
     return deepEqual(val, obj);
 }

@@ -36,18 +36,18 @@ process.on('message', function (msg) {
 
         } else if (msg.cmd === 'get') {
             process.send({ ok: true, value: stower.get(msg.key) });
+            process.exit(0);
             return;
 
         } else if (msg.cmd === 'keys') {
             process.send({ ok: true, value: stower.keys() });
+            process.exit(0);
             return;
         }
 
-        // flush to disk before reporting done so the parent can read the final state
-        setTimeout(function () {
-            process.send({ ok: true });
-            process.exit(0);
-        }, 1500);
+        // process.on('exit') in index.js flushes the store synchronously on exit
+        process.send({ ok: true });
+        process.exit(0);
 
     } catch (e) {
         process.send({ ok: false, error: e.message });

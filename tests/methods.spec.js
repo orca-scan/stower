@@ -32,9 +32,9 @@ describe('stower: methods', function () {
 
             // remove proper-lockfile's .lock directory if it exists
             var lockDir = filepath + '.lock';
-            if (fs.existsSync(lockDir)) fs.rmdirSync(lockDir);
+            if (fs.existsSync(lockDir)) fs.rmSync(lockDir, { recursive: true, force: true });
 
-            if (fs.existsSync(dir)) fs.rmdirSync(dir);
+            if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
         }
         catch (e) {
             // ignore cleanup errors

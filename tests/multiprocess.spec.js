@@ -105,7 +105,7 @@ describe('stower: multiprocess', function () {
         expect(allKeys.length).toBe(40);
     });
 
-    it('should result in an empty file when one process clears while another writes', async function () {
+    it('should produce consistent (non-corrupt) JSON when one process clears while another writes', async function () {
         // writer sets 5 keys, clearer calls clear() — run simultaneously
         var entries = [];
         for (var i = 0; i < 5; i++) {
@@ -117,9 +117,11 @@ describe('stower: multiprocess', function () {
             runWorker({ cmd: 'clear', file: filepath })
         ]);
 
-        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        // outcome is nondeterministic (last-writer-wins): clear wins (0 keys) or setMany wins (5 keys)
+        // the important invariant is that the file is valid JSON with a consistent state
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8')); // throws if corrupt
         var dataKeys = Object.keys(content).filter(function (k) { return k !== '__expires__'; });
-        expect(dataKeys.length).toBe(0);
+        expect(dataKeys.length === 0 || dataKeys.length === 5).toBe(true);
     });
 
     it('should produce consistent (non-corrupt) JSON when one process removes a key another is setting', async function () {
