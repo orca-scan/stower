@@ -6,7 +6,7 @@
 
 Stower is a simple disk backed key/value store for node.
 
-**Why?** because sometimes you just need to _stow_ a few values, no database. `stower` keeps your data in memory and writes it to disk as a readable JSON file in the background. It handles atomic saves, uses file locks to avoid conflicts, recovers from corrupt files, and stores everything in your systems cache folder _(when no path provided)_. Safe for use across multiple processes or Docker containers sharing the same file.
+**Why?** For lightweight, disposable state without running a database. `stower` keeps data in memory and syncs to a readable JSON file in the background (defaulting to your system cache folder). It uses atomic writes, file locks, and corrupt-file recovery across processes, but treat it as a convenience cache, not a source of truth for critical data.
 
 ## Install
 
