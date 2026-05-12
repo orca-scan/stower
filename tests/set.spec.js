@@ -2,7 +2,7 @@
 var stower = require('../index.js');
 var utils = require('./helpers/spec-utils.js');
 
-describe('stower: set', function () {
+describe('stower: .set', function () {
     var filepath = utils.storeFile('set-test');
 
     beforeEach(function () {

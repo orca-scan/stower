@@ -3,7 +3,7 @@ var fs = require('fs');
 var stower = require('../index.js');
 var utils = require('./helpers/spec-utils.js');
 
-describe('stower: keys', function () {
+describe('stower: .keys', function () {
     var filepath = utils.storeFile('keys-test');
 
     beforeEach(function () {
@@ -15,7 +15,7 @@ describe('stower: keys', function () {
         utils.cleanupStoreFile(filepath);
     });
 
-    it('returns normalized keys for active entries', function () {
+    it('returns normalized keys for non-expired entries', function () {
         stower.set('One', { v: 1 });
         stower.set(' two ', { v: 2 });
 
@@ -31,7 +31,7 @@ describe('stower: keys', function () {
         expect(stower.keys()).toEqual(['long']);
     });
 
-    it('refreshes key view when disk changes externally', async function () {
+    it('refreshes keys after external disk writes', async function () {
         stower.set('mine', { v: 1 });
         await utils.wait(1500);
 
@@ -40,7 +40,7 @@ describe('stower: keys', function () {
         expect(stower.keys().sort()).toEqual(['mine', 'other']);
     });
 
-    it('does not expose internal __expires__ as a public key', function () {
+    it('hides internal __expires__ from public keys', function () {
         fs.writeFileSync(filepath, JSON.stringify({
             alpha: { v: 1 },
             __expires__: { alpha: Date.now() + 10000 }

@@ -2,7 +2,7 @@
 var stower = require('../index.js');
 var utils = require('./helpers/spec-utils.js');
 
-describe('stower: remove', function () {
+describe('stower: .remove', function () {
     var filepath = utils.storeFile('remove-test');
 
     beforeEach(function () {

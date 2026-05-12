@@ -3,7 +3,7 @@ var fs = require('fs');
 var stower = require('../index.js');
 var utils = require('./helpers/spec-utils.js');
 
-describe('stower: values', function () {
+describe('stower: .values', function () {
     var filepath = utils.storeFile('values-test');
 
     beforeEach(function () {

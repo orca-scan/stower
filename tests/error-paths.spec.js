@@ -82,7 +82,7 @@ describe('stower: error paths', function () {
         expect(content.beta).toEqual({ v: 2 });
     });
 
-    it('retries after write failures inside the locked commit section', async function () {
+    it('retries after write failures while holding the file lock', async function () {
         var filepath = scenarioFile('rename-failure');
         filesToCleanup.push(filepath);
         utils.ensureStoreDir(filepath);

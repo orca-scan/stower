@@ -4,7 +4,7 @@ var path = require('path');
 var stower = require('../index.js');
 var utils = require('./helpers/spec-utils.js');
 
-describe('stower: persist', function () {
+describe('stower: .persist', function () {
     var filepath = utils.storeFile('persist-test');
 
     beforeEach(function () {
