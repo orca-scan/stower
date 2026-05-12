@@ -158,12 +158,12 @@ describe('stower: expiresInSeconds', function () {
         expect(stower.exists('extend')).toBe(true);
     });
 
-    it('should return false from exists() with a matching value after expiry', async function () {
+    it('should return false from exists() after expiry', async function () {
         stower.set('expcheck', { user: 'bob' }, 1);
 
         await wait(1500);
 
-        expect(stower.exists('expcheck', { user: 'bob' })).toBe(false);
+        expect(stower.exists('expcheck')).toBe(false);
     });
 
     it('should prune expired key from __expires__ map on disk after next save', async function () {

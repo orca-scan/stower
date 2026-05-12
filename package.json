@@ -1,6 +1,6 @@
 {
   "name": "stower",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Simple disk backed key/value store for node",
   "main": "index.js",
   "scripts": {

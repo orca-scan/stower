@@ -206,18 +206,15 @@ function remove(name) {
 }
 
 /**
- * Check if a key exists and optionally if its value matches
+ * Check if a key exists and has not expired
  * @param {string} name - Key name
- * @param {*} [expectedValue] - Optional value to match using deep equality
- * @returns {boolean} - True if the key exists and, if expectedValue is provided, deeply equals the stored value
+ * @returns {boolean} - True if the key exists and has not expired
  */
-function exists(name, expectedValue) {
+function exists(name) {
     load();
     var normalizedKey = normalizeKey(name);
     if (isExpired(normalizedKey)) return false;
-    if (!Object.prototype.hasOwnProperty.call(_store, normalizedKey)) return false;
-    if (arguments.length < 2) return true;
-    return deepEqual(_store[normalizedKey], expectedValue);
+    return Object.prototype.hasOwnProperty.call(_store, normalizedKey);
 }
 
 /**
