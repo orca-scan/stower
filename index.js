@@ -459,21 +459,24 @@ function readFromDisk() {
 }
 
 /**
- * Acquire the file lock, retrying up to 10 times with random back-off.
+ * Acquire the file lock, retrying up to 30 times with random back-off.
+ * 30 attempts × ~200 ms avg = ~6 s total budget, which is enough headroom for
+ * 8+ processes queued simultaneously (e.g. rolling deploys or container restarts
+ * where each process calls flush() on SIGTERM at roughly the same time).
  * Returns the release function on success, or null if all attempts fail.
  * @returns {Function|null} - Lock release function, or null on failure
  */
 function acquireLock() {
-    for (var attempts = 1; attempts <= 10; attempts++) {
+    for (var attempts = 1; attempts <= 30; attempts++) {
         try {
             return lockfile.lockSync(_FILE, { stale: 10000 });
         }
         catch (error) {
-            if (attempts >= 10) {
+            if (attempts >= 30) {
                 log('could not acquire lock:', error.message);
                 return null;
             }
-            sleepSync(100 + Math.floor(Math.random() * 100));
+            sleepSync(100 + Math.floor(Math.random() * 200));
         }
     }
     return null;
@@ -573,6 +576,9 @@ function flush() {
 
 /**
  * Write to disk safely: acquire lock → merge → commit → release.
+ * If the lock cannot be acquired (e.g. too many concurrent writers), dirty keys
+ * are preserved and a new write is scheduled via save() so data is never silently
+ * dropped. flush() uses a higher retry budget so exit-time writes also land.
  * @returns {void}
  */
 function write() {
@@ -590,7 +596,13 @@ function write() {
     }
 
     var release = acquireLock();
-    if (!release) return;
+    if (!release) {
+        // Lock budget exhausted — reschedule so dirty keys are not silently dropped.
+        // On the flush() path (process exit) the increased retry count in acquireLock
+        // prevents reaching here; this guard covers the debounced-write path.
+        if (Object.keys(_dirty).length > 0 || _clearPending) save();
+        return;
+    }
 
     try {
         var result = mergeAndSerialize();

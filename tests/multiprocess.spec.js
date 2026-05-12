@@ -196,4 +196,30 @@ describe('stower: multiprocess', function () {
         var allKeys = Object.keys(content).filter(function (k) { return k !== '__expires__'; });
         expect(allKeys.length).toBe(100);
     });
+
+    // Regression test: with 8+ processes flushing to disk simultaneously (rolling deploys,
+    // container restarts) the lock retry budget (~1.5 s) was exhausted and write() returned
+    // without saving — silently dropping ~50 keys per failed process.
+    it('should preserve all 400 keys when 8 processes flush to disk concurrently', async function () {
+        var workers = [];
+        for (var i = 0; i < 8; i++) {
+            var entries = [];
+            for (var j = 0; j < 50; j++) {
+                entries.push({ key: 'w' + i + '_k' + j, value: { worker: i, key: j } });
+            }
+            workers.push(runWorker({ cmd: 'setMany', file: filepath, entries: entries }));
+        }
+
+        var results = await Promise.all(workers);
+
+        for (var r = 0; r < results.length; r++) {
+            expect(results[r].ok).toBe(true);
+        }
+
+        var raw = fs.readFileSync(filepath, 'utf8');
+        var content = JSON.parse(raw); // throws if corrupt
+
+        var allKeys = Object.keys(content).filter(function (k) { return k !== '__expires__'; });
+        expect(allKeys.length).toBe(400);
+    }, 60000); // generous timeout: up to 8 processes queuing for the lock
 });
