@@ -16,8 +16,24 @@ describe('stower: methods', function () {
 
     afterEach(function () {
         try {
+            // remove the data file
             if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+
+            // remove any PID temp files left by write()
             var dir = path.dirname(filepath);
+            if (fs.existsSync(dir)) {
+                var files = fs.readdirSync(dir);
+                for (var i = 0; i < files.length; i++) {
+                    if (files[i].indexOf('.tmp') !== -1) {
+                        fs.unlinkSync(path.join(dir, files[i]));
+                    }
+                }
+            }
+
+            // remove proper-lockfile's .lock directory if it exists
+            var lockDir = filepath + '.lock';
+            if (fs.existsSync(lockDir)) fs.rmdirSync(lockDir);
+
             if (fs.existsSync(dir)) fs.rmdirSync(dir);
         }
         catch (e) {
@@ -51,6 +67,284 @@ describe('stower: methods', function () {
 
         var content = JSON.parse(fs.readFileSync(stower.filename, 'utf8'));
         expect(content.foo.bar).toBe('baz');
+    });
+
+    it('should return value before expiry elapses', function () {
+
+        stower.set('session', { user: 'alice' }, 10); // 10 second TTL
+
+        expect(stower.get('session')).toEqual({ user: 'alice' });
+        expect(stower.exists('session')).toBe(true);
+        expect(stower.keys()).toContain('session');
+        expect(stower.values()).toContain(jasmine.objectContaining({ user: 'alice' }));
+    });
+
+    it('should hide value after expiry elapses', async function () {
+
+        stower.set('temp', { data: 1 }, 1); // 1 second TTL
+
+        await wait(1500); // wait for expiry
+
+        expect(stower.get('temp')).toBeNull();
+        expect(stower.exists('temp')).toBe(false);
+        expect(stower.keys()).not.toContain('temp');
+        expect(stower.values()).not.toContain(jasmine.objectContaining({ data: 1 }));
+    });
+
+    it('should clean expired items from disk on next save', async function () {
+
+        stower.persist(filepath);
+        stower.set('expires', { v: 1 }, 1); // 1 second TTL
+        stower.set('permanent', { v: 2 });
+
+        await wait(1500); // wait for initial save and expiry
+
+        stower.set('trigger', { v: 3 }); // trigger a new save after expiry
+
+        await wait(1500); // wait for new save to complete
+
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        expect(content.expires).toBeUndefined();
+        expect(content.permanent).toBeDefined();
+    });
+
+    it('should persist expiry data to disk and restore it on load', async function () {
+
+        stower.persist(filepath);
+        stower.set('ttlkey', { x: 1 }, 60); // 60 second TTL
+
+        await wait(1500); // wait for async save
+
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        expect(content.__expires__.ttlkey).toBeDefined();
+
+        stower.persist(filepath); // reload from disk
+        expect(stower.get('ttlkey')).toEqual({ x: 1 });
+    });
+
+    it('should clear expiry when key is removed', function () {
+
+        stower.set('gone', { v: 1 }, 10);
+        stower.remove('gone');
+
+        expect(stower.get('gone')).toBeNull();
+        expect(stower.exists('gone')).toBe(false);
+    });
+
+    it('should clear all expiry data when clear is called', function () {
+
+        stower.set('a', { v: 1 }, 10);
+        stower.set('b', { v: 2 }, 10);
+        stower.clear();
+
+        expect(stower.keys()).toEqual([]);
+        expect(stower.values()).toEqual([]);
+    });
+
+    it('should remove expiry when key is re-set without expiresInSeconds', async function () {
+
+        stower.set('renew', { v: 1 }, 1); // 1 second TTL
+
+        await wait(1500); // wait for expiry
+
+        stower.set('renew', { v: 2 }); // re-set without expiry
+
+        expect(stower.get('renew')).toEqual({ v: 2 });
+        expect(stower.exists('renew')).toBe(true);
+    });
+
+    it('should pick up changes another process wrote to the file', async function () {
+
+        stower.persist(filepath);
+        stower.set('mine', { v: 1 });
+
+        await wait(1500); // wait for initial save
+
+        // simulate another process writing directly to the file
+        var external = { mine: { v: 1 }, other: { v: 99 } };
+        fs.writeFileSync(filepath, JSON.stringify(external, null, 2));
+
+        // get() calls load() which checks mtime and reloads the file
+        expect(stower.get('other')).toEqual({ v: 99 });
+    });
+
+    it('should merge its own keys without overwriting keys from other processes', async function () {
+
+        stower.persist(filepath);
+
+        // simulate a key already on disk from another process
+        var diskData = { diskkey: { v: 1 } };
+        fs.writeFileSync(filepath, JSON.stringify(diskData, null, 2));
+
+        stower.set('mykey', { v: 2 });
+
+        await wait(1500); // wait for save
+
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        expect(content.diskkey).toBeDefined();  // other process's key preserved
+        expect(content.mykey).toBeDefined();    // this process's key written
+    });
+
+    it('should remove a key from disk when remove() is called', async function () {
+
+        stower.persist(filepath);
+        stower.set('gone', { v: 1 });
+
+        await wait(1500); // wait for save
+
+        stower.remove('gone');
+
+        await wait(1500); // wait for save
+
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        expect(content.gone).toBeUndefined();
+    });
+
+    // --- falsy value tests ---
+
+    it('should store and return the number 0', function () {
+        stower.set('zero', 0);
+        expect(stower.get('zero')).toBe(0);
+        expect(stower.exists('zero')).toBe(true);
+    });
+
+    it('should store and return false', function () {
+        stower.set('no', false);
+        expect(stower.get('no')).toBe(false);
+        expect(stower.exists('no')).toBe(true);
+    });
+
+    it('should store and return an empty string', function () {
+        stower.set('empty', '');
+        expect(stower.get('empty')).toBe('');
+        expect(stower.exists('empty')).toBe(true);
+    });
+
+    // --- __expires__ reserved key collision ---
+
+    it('should silently reject __expires__ as a key to protect internal TTL storage', function () {
+        stower.set('__expires__', { bad: true });
+        expect(stower.get('__expires__')).toBeNull();
+
+        // a real TTL key should still work correctly
+        stower.set('realkey', { v: 1 }, 60);
+        expect(stower.get('realkey')).toEqual({ v: 1 });
+    });
+
+    // --- TTL edge cases ---
+
+    it('should store value without expiry when TTL is 0', function () {
+        stower.set('zero-ttl', { v: 1 }, 0);
+        expect(stower.get('zero-ttl')).toEqual({ v: 1 });
+        expect(stower.exists('zero-ttl')).toBe(true);
+    });
+
+    it('should store value without expiry when TTL is negative', function () {
+        stower.set('neg-ttl', { v: 1 }, -5);
+        expect(stower.get('neg-ttl')).toEqual({ v: 1 });
+        expect(stower.exists('neg-ttl')).toBe(true);
+    });
+
+    it('should extend expiry when key is re-set with a longer TTL', function () {
+        stower.set('extend', { v: 1 }, 5);
+        var first = stower.get('extend');
+        stower.set('extend', { v: 2 }, 60);
+        expect(stower.get('extend')).toEqual({ v: 2 });
+        expect(stower.exists('extend')).toBe(true);
+    });
+
+    it('should return false from exists() with a matching value after expiry', async function () {
+        stower.set('expcheck', { user: 'bob' }, 1);
+
+        await wait(1500);
+
+        expect(stower.exists('expcheck', { user: 'bob' })).toBe(false);
+    });
+
+    it('should prune expired key from __expires__ map on disk after next save', async function () {
+        stower.persist(filepath);
+        stower.set('dying', { v: 1 }, 1); // 1 second TTL
+
+        await wait(1500); // wait for save and expiry
+
+        stower.set('trigger', { v: 2 }); // trigger a save after expiry
+
+        await wait(1500); // wait for new save
+
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        // __expires__ map should either be absent or not contain the expired key
+        expect(content.__expires__ && content.__expires__.dying).toBeUndefined();
+    });
+
+    // --- merge / dirty-key edge cases ---
+
+    it('should not write a key that was set then removed within the debounce window', async function () {
+        stower.persist(filepath);
+        stower.set('ghost', { v: 1 });
+        stower.remove('ghost');
+
+        await wait(1500); // wait for save
+
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        expect(content.ghost).toBeUndefined();
+    });
+
+    it('should only persist the last value when the same key is set multiple times rapidly', async function () {
+        stower.persist(filepath);
+        stower.set('rapid', { v: 1 });
+        stower.set('rapid', { v: 2 });
+        stower.set('rapid', { v: 3 });
+
+        await wait(1500); // wait for save
+
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        expect(content.rapid).toEqual({ v: 3 });
+    });
+
+    it('should fully reset state when persist() is called twice on the same file', async function () {
+        stower.persist(filepath);
+        stower.set('first', { v: 1 });
+
+        await wait(1500); // wait for save
+
+        stower.persist(filepath); // reload — should see the saved key, nothing extra
+
+        expect(stower.get('first')).toEqual({ v: 1 });
+        expect(stower.keys().length).toBe(1);
+    });
+
+    // --- resilience ---
+
+    it('should back up a corrupt file and start fresh', function () {
+        var backupPath = filepath + '.corrupt';
+
+        // write garbage to the file
+        var dir = path.dirname(filepath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(filepath, 'NOT VALID JSON }{');
+
+        stower.persist(filepath);
+
+        expect(fs.existsSync(backupPath)).toBe(true);
+        expect(stower.keys()).toEqual([]);
+
+        // cleanup backup
+        try { fs.unlinkSync(backupPath); } catch (e) { /* ignore */ }
+    });
+
+    it('should create a new file when the file is deleted after persist()', async function () {
+        stower.persist(filepath);
+
+        // delete the file after persist
+        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+
+        stower.set('newfile', { v: 1 });
+
+        await wait(1500); // wait for save
+
+        expect(fs.existsSync(filepath)).toBe(true);
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+        expect(content.newfile).toEqual({ v: 1 });
     });
 });
 
