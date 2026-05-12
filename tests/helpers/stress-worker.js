@@ -16,6 +16,28 @@
 /* eslint-disable import/extensions */
 var stower = require('../../index.js');
 
+/**
+ * Send IPC payload and only exit after the message is flushed.
+ * @param {Object} payload - Response payload
+ * @param {number} code - Exit code
+ * @returns {void}
+ */
+function respondAndExit(payload, code) {
+    if (typeof process.send !== 'function') {
+        process.exit(code);
+        return;
+    }
+
+    try {
+        process.send(payload, function () {
+            process.exit(code);
+        });
+    }
+    catch (error) {
+        process.exit(code);
+    }
+}
+
 process.on('message', function (msg) {
     try {
         stower.persist(msg.file);
@@ -36,8 +58,7 @@ process.on('message', function (msg) {
                     mismatches.push({ key: rKey, expected: 'exists', got: null });
                 }
             }
-            process.send({ ok: true, mismatches: mismatches });
-            process.exit(0);
+            respondAndExit({ ok: true, mismatches: mismatches }, 0);
             return;
 
         } else if (msg.cmd === 'ttl-set') {
@@ -58,16 +79,13 @@ process.on('message', function (msg) {
             stower.clear();
 
         } else if (msg.cmd === 'keys') {
-            process.send({ ok: true, value: stower.keys() });
-            process.exit(0);
+            respondAndExit({ ok: true, value: stower.keys() }, 0);
             return;
         }
 
-        process.send({ ok: true });
-        process.exit(0);
+        respondAndExit({ ok: true }, 0);
 
     } catch (e) {
-        process.send({ ok: false, error: e.message });
-        process.exit(1);
+        respondAndExit({ ok: false, error: e.message }, 1);
     }
 });

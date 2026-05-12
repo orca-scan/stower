@@ -106,7 +106,7 @@ describe('stower: multiprocess', function () {
     });
 
     it('should produce consistent (non-corrupt) JSON when one process clears while another writes', async function () {
-        // writer sets 5 keys, clearer calls clear() — run simultaneously
+        // writer sets 5 keys, clearer calls clear() - run simultaneously
         var entries = [];
         for (var i = 0; i < 5; i++) {
             entries.push({ key: 'todelete' + i, value: { v: i } });
@@ -199,7 +199,7 @@ describe('stower: multiprocess', function () {
 
     // Regression test: with 8+ processes flushing to disk simultaneously (rolling deploys,
     // container restarts) the lock retry budget (~1.5 s) was exhausted and write() returned
-    // without saving — silently dropping ~50 keys per failed process.
+    // without saving - silently dropping ~50 keys per failed process.
     it('should preserve all 400 keys when 8 processes flush to disk concurrently', async function () {
         var workers = [];
         for (var i = 0; i < 8; i++) {

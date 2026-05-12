@@ -69,7 +69,7 @@ Method                              | Description
 `get(key)`                          | Retrieves a value by key, returns `null` if the key doesn't exist
 `set(key, value, expiresInSeconds)` | Stores a value and schedules it to be saved to disk. Pass an optional `expiresInSeconds` to automatically expire the entry
 `remove(key)`                       | Deletes a key from the store and schedules the update to disk
-`exists(key, val)`                  | Checks if a key exists and optionally if it matches a given value using deep equality
+`exists(key)`                       | Checks if a key exists
 `keys()`                            | Returns an array of all stored keys
 `values()`                          | Returns an array of all stored values
 `clear()`                           | Deletes all stored data and schedules a save to disk
