@@ -629,15 +629,30 @@ process.on('SIGTERM', function () {
     process.exit();
 });
 
+/**
+ * Build a public API method wrapper that logs calls in debug mode.
+ * @param {string} methodName - API method name for log output
+ * @param {Function} method - Original method implementation
+ * @returns {Function} wrapped method
+ */
+function createDebugWrappedMethod(methodName, method) {
+    return function () {
+        if (_debuggingEnabled) {
+            log(methodName, [].slice.call(arguments));
+        }
+        return method.apply(this, arguments);
+    };
+}
+
 var api = {
-    get: get,
-    set: set,
-    remove: remove,
-    exists: exists,
-    keys: keys,
-    values: values,
-    clear: clear,
-    persist: persist
+    get: createDebugWrappedMethod('get', get),
+    set: createDebugWrappedMethod('set', set),
+    remove: createDebugWrappedMethod('remove', remove),
+    exists: createDebugWrappedMethod('exists', exists),
+    keys: createDebugWrappedMethod('keys', keys),
+    values: createDebugWrappedMethod('values', values),
+    clear: createDebugWrappedMethod('clear', clear),
+    persist: createDebugWrappedMethod('persist', persist)
 };
 
 Object.defineProperty(api, 'debug', {
