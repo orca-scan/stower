@@ -1,3 +1,4 @@
+/* eslint-disable dot-notation */
 /* eslint-disable no-console */
 /* eslint-disable prefer-rest-params */
 
@@ -103,7 +104,8 @@ function persist(filename) {
                 try {
                     fs.renameSync(_FILE, _BACKUP);
                     log('corrupt file backed up:', _BACKUP);
-                } catch (renameErr) {
+                }
+                catch (renameErr) {
                     log('failed to backup corrupt file:', _FILE);
                 }
             }
@@ -137,8 +139,8 @@ function isExpired(k) {
 
 /**
  * Deep compare 2 values
- * @param {Object} a - first value
- * @param {Object} b - second value
+ * @param {*} a - first value
+ * @param {*} b - second value
  * @returns {boolean} - true if deeply equal
  */
 function deepEqual(a, b) {
@@ -160,8 +162,8 @@ function deepEqual(a, b) {
 
 /**
  * Create lock with retry
- * @param {Function} cb - callback on lock
- * @param {number} attempt - retry count
+ * @param {Function} cb - callback to execute once lock is acquired
+ * @param {number} [attempt] - current attempt count
  * @returns {void}
  */
 function lock(cb, attempt) {
@@ -215,7 +217,7 @@ function unlock() {
 
 /**
  * Write to disk with lock
- * @param {Function} done - callback after write
+ * @param {Function} [done] - optional callback after write
  * @returns {void}
  */
 function write(done) {
@@ -261,7 +263,7 @@ function flush() {
 /**
  * Set item
  * @param {string} name - Key name
- * @param {Object} value - Value to store
+ * @param {*} value - Value to store
  * @param {number} [ttlMs] - Optional time-to-live in milliseconds
  * @returns {void}
  */
@@ -289,7 +291,7 @@ function set(name, value, ttlMs) {
 /**
  * Get item
  * @param {string} name - Key name
- * @returns {Object|null}
+ * @returns {*} stored value or null if not found or expired
  */
 function get(name) {
     var k = key(name);
@@ -318,10 +320,10 @@ function remove(name) {
 }
 
 /**
- * Check If Key Exists Or Matches Value
+ * Check if key exists or matches value
  * @param {string} name - Key name
- * @param {Object} [obj] - Optional value to match
- * @returns {boolean}
+ * @param {*} [obj] - Optional value to match
+ * @returns {boolean} true if key exists and optionally matches the given value
  */
 function exists(name, obj) {
     var k = key(name);
@@ -342,7 +344,7 @@ function exists(name, obj) {
 
 /**
  * Return all values
- * @returns {Array}
+ * @returns {Array} array of all non-expired stored values
  */
 function values() {
     var out = [];
@@ -357,7 +359,7 @@ function values() {
 
 /**
  * Return all keys
- * @returns {Array}
+ * @returns {Array} array of all non-expired key names
  */
 function keys() {
     var allKeys = Object.keys(_store);
@@ -395,7 +397,7 @@ function log() {
 /**
  * Get a safe writable cache directory for a module
  * @param {string} moduleName - Module name
- * @returns {string}
+ * @returns {string} absolute path to the cache directory
  */
 function getCachePath(moduleName) {
     var base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
