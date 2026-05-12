@@ -9,6 +9,9 @@ var WORKERS = parseInt(process.env.STOWER_STRESS_WORKERS || '50', 10);
 var OPS = parseInt(process.env.STOWER_STRESS_OPS || '40', 10);
 var FLUSH_WAIT_MS = 3000;
 var WORKER_EXIT_GRACE_MS = 120;
+var TTL_STRESS_SECONDS = parseInt(process.env.STOWER_STRESS_TTL_SECONDS || '10', 10);
+var TTL_SNAPSHOT_TIMEOUT_MS = 15000;
+var TTL_SNAPSHOT_POLL_MS = 100;
 
 var tmpDir = path.join(os.tmpdir(), 'stower-jasmine-stress-' + process.pid);
 
@@ -145,6 +148,35 @@ function runWorker(msg) {
     });
 }
 
+/**
+ * Wait for disk state to contain all expected TTL keys and metadata.
+ * @param {string} filepath - JSON file path
+ * @param {number} expectedCount - Expected number of data keys
+ * @returns {Promise<Object|null>} parsed snapshot or null on timeout
+ */
+async function waitForExpectedTtlSnapshot(filepath, expectedCount) {
+    var deadline = Date.now() + TTL_SNAPSHOT_TIMEOUT_MS;
+
+    while (Date.now() < deadline) {
+        try {
+            var content = readStore(filepath);
+            var keys = dataKeys(content);
+            var expiresCount = content.__expires__ ? Object.keys(content.__expires__).length : 0;
+
+            if (keys.length === expectedCount && expiresCount === expectedCount) {
+                return content;
+            }
+        }
+        catch (error) {
+            // File may not exist yet or may be mid-write; keep polling.
+        }
+
+        await wait(TTL_SNAPSHOT_POLL_MS);
+    }
+
+    return null;
+}
+
 describe('stower: stress (shared file, 50 workers)', function () {
     var defaultTimeout;
 
@@ -231,8 +263,10 @@ describe('stower: stress (shared file, 50 workers)', function () {
         var filepath = tmpFile('ttl-load');
         ensureDir(path.dirname(filepath));
 
-        var ttlSeconds = 2;
+        // Keep TTL comfortably above high-contention commit windows in CI/coverage runs.
+        var ttlSeconds = TTL_STRESS_SECONDS;
         var opsPerWorker = Math.min(20, OPS);
+        var expectedCount = WORKERS * opsPerWorker;
 
         var workers = [];
         for (var i = 0; i < WORKERS; i++) {
@@ -249,12 +283,16 @@ describe('stower: stress (shared file, 50 workers)', function () {
         var workerErrors = results.filter(function (res) { return !res.ok; });
         expect(workerErrors.length).toBe(0);
 
-        await wait(FLUSH_WAIT_MS);
+        var before = await waitForExpectedTtlSnapshot(filepath, expectedCount);
+        expect(before).not.toBeNull();
+        if (!before) {
+            cleanupFileArtifacts(filepath);
+            return;
+        }
 
-        var before = readStore(filepath);
-        expect(dataKeys(before).length).toBe(WORKERS * opsPerWorker);
+        expect(dataKeys(before).length).toBe(expectedCount);
         expect(before.__expires__).toBeDefined();
-        expect(Object.keys(before.__expires__).length).toBe(WORKERS * opsPerWorker);
+        expect(Object.keys(before.__expires__).length).toBe(expectedCount);
 
         await wait((ttlSeconds * 1000) + 700);
 
