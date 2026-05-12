@@ -97,6 +97,17 @@ function getCachePath(moduleName) {
     return path.join(base, moduleName);
 }
 
+/**
+ * Block the event loop for ms milliseconds — used for sync lock retry back-off.
+ * Node.js has no synchronous sleep; this busy-wait is intentional and bounded.
+ * @param {number} ms - Milliseconds to wait
+ * @returns {void}
+ */
+function sleepSync(ms) {
+    var until = Date.now() + ms;
+    while (Date.now() < until) { /* spin */ }
+}
+
 /* ─────────────────────────────────────────────
    Public API
    These are the functions callers use day-to-day.
@@ -191,14 +202,9 @@ function keys() {
  */
 function values() {
     load();
-    var out = [];
-    var keysInStore = Object.keys(_store);
-    for (var i = 0; i < keysInStore.length; i++) {
-        if (!isExpired(keysInStore[i])) {
-            out.push(_store[keysInStore[i]]);
-        }
-    }
-    return out;
+    return Object.keys(_store)
+        .filter(function (k) { return !isExpired(k); })
+        .map(function (k) { return _store[k]; });
 }
 
 /**
@@ -221,6 +227,69 @@ function clear() {
 ───────────────────────────────────────────── */
 
 /**
+ * Load data from disk into _store and _expires during persist().
+ * Backs up the file if it contains corrupt JSON.
+ * @returns {void}
+ */
+function loadInitialData() {
+    try {
+        var json = fs.readFileSync(_FILE, 'utf8');
+        var parsed = JSON.parse(json);
+
+        // __expires__ is a reserved key we use to persist TTL data — not a user key
+        _expires = parsed.__expires__ || Object.create(null);
+        delete parsed.__expires__;
+        _store = parsed;
+
+        _lastMtime = fs.statSync(_FILE).mtimeMs;
+        log('loaded', Object.keys(_store).length, 'items');
+    }
+    catch (e) {
+        if (e.code === 'EACCES') {
+            log('permission denied:', _FILE);
+            throw e;
+        }
+
+        // back up the corrupt file so we don't permanently lose data
+        if (fs.existsSync(_FILE)) {
+            try {
+                fs.renameSync(_FILE, _BACKUP);
+                log('corrupt file backed up:', _BACKUP);
+            } catch (renameErr) {
+                log('failed to backup corrupt file:', _FILE);
+            }
+        }
+
+        _store = Object.create(null);
+        log('failed to load, backup created');
+    }
+}
+
+/**
+ * Remove orphaned temp files left by processes that crashed mid-write.
+ * @param {string} dir - Directory containing the data file
+ * @returns {void}
+ */
+function cleanOrphanedTempFiles(dir) {
+    try {
+        var base = path.basename(_FILE);
+        var tmpFiles = fs.readdirSync(dir);
+        for (var i = 0; i < tmpFiles.length; i++) {
+            if (tmpFiles[i].indexOf(base + '.') === 0 && tmpFiles[i].slice(-4) === '.tmp') {
+                try {
+                    fs.unlinkSync(path.join(dir, tmpFiles[i]));
+                    log('removed orphaned temp file:', tmpFiles[i]);
+                } catch (unlinkErr) {
+                    log('could not remove orphaned temp file:', tmpFiles[i]);
+                }
+            }
+        }
+    } catch (cleanupErr) {
+        log('temp file cleanup skipped:', cleanupErr.message);
+    }
+}
+
+/**
  * Initialize the store: resolve the file path, load any existing data from disk,
  * and clean up orphaned temp files. Call this once at startup.
  *
@@ -231,105 +300,69 @@ function clear() {
  * @returns {void}
  */
 function persist(filename) {
-    // use OS temp path if no filename provided
     filename = filename || path.join(getCachePath('stower'), 'data.json');
 
-    // ensure .json extension
     if (path.extname(filename) !== '.json') filename += '.json';
 
-    // always resolve to absolute path
     _FILE = path.resolve(filename);
-
-    // use a per-process temp file to avoid collisions between concurrent writers
     _TEMP = _FILE + '.' + process.pid + '.tmp';
     _BACKUP = _FILE + '.corrupt';
 
     var dir = path.dirname(_FILE);
     log('persist:', _FILE);
 
-    // reset state in case persist() is called more than once
     _store = Object.create(null);
     _expires = Object.create(null);
     _dirty = Object.create(null);
     _clearPending = false;
     _lastMtime = 0;
 
-    // retry loop if directory isn't ready (e.g. Docker volume not yet mounted)
-    var attempts = 0;
-    var maxAttempts = 10;
-
-    function tryInit() {
-        attempts++;
-
+    for (var attempts = 1; attempts <= 10; attempts++) {
         try {
-            if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir, { recursive: true });
-            }
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
             fs.accessSync(dir, fs.constants.W_OK);
+            break;
         }
         catch (e) {
-            if (attempts < maxAttempts) {
-                log('waiting for path:', dir, '| attempts left:', maxAttempts - attempts);
-                return setTimeout(tryInit, 300);
-            }
-            log('failed to create directory:', dir);
-            log('error:', e.message);
-            throw e;
-        }
-
-        // load existing data from disk
-        try {
-            var json = fs.readFileSync(_FILE, 'utf8');
-            var parsed = JSON.parse(json);
-
-            // __expires__ is a reserved key we use to persist TTL data — not a user key
-            _expires = parsed.__expires__ || Object.create(null);
-            delete parsed.__expires__;
-            _store = parsed;
-
-            _lastMtime = fs.statSync(_FILE).mtimeMs;
-            log('loaded', Object.keys(_store).length, 'items');
-        }
-        catch (e) {
-            if (e.code === 'EACCES') {
-                log('permission denied:', _FILE);
+            if (attempts >= 10) {
+                log('failed to create directory:', dir);
+                log('error:', e.message);
                 throw e;
             }
-
-            // back up the corrupt file so we don't permanently lose data
-            if (fs.existsSync(_FILE)) {
-                try {
-                    fs.renameSync(_FILE, _BACKUP);
-                    log('corrupt file backed up:', _BACKUP);
-                } catch (renameErr) {
-                    log('failed to backup corrupt file:', _FILE);
-                }
-            }
-
-            _store = Object.create(null);
-            log('failed to load, backup created');
-        }
-
-        // clean up any orphaned temp files from processes that crashed mid-write
-        try {
-            var base = path.basename(_FILE);
-            var tmpFiles = fs.readdirSync(dir);
-            for (var ti = 0; ti < tmpFiles.length; ti++) {
-                if (tmpFiles[ti].indexOf(base + '.') === 0 && tmpFiles[ti].slice(-4) === '.tmp') {
-                    try {
-                        fs.unlinkSync(path.join(dir, tmpFiles[ti]));
-                        log('removed orphaned temp file:', tmpFiles[ti]);
-                    } catch (unlinkErr) {
-                        log('could not remove orphaned temp file:', tmpFiles[ti]);
-                    }
-                }
-            }
-        } catch (cleanupErr) {
-            log('temp file cleanup skipped:', cleanupErr.message);
+            log('waiting for path:', dir, '| attempts left:', 10 - attempts);
+            sleepSync(300); // blocks the event loop — only reached on Docker volume delays at startup
         }
     }
 
-    tryInit();
+    loadInitialData();
+    cleanOrphanedTempFiles(dir);
+}
+
+/**
+ * Re-apply dirty keys from this process on top of freshly loaded disk state.
+ * Prevents load() from clobbering keys that set() hasn't yet flushed to disk.
+ * @param {Object} oldStore - _store snapshot before the disk reload
+ * @param {Object} oldExpires - _expires snapshot before the disk reload
+ * @returns {void}
+ */
+function reapplyDirtyKeys(oldStore, oldExpires) {
+    var dirtyKeys = Object.keys(_dirty);
+    for (var i = 0; i < dirtyKeys.length; i++) {
+        var k = dirtyKeys[i];
+        if (oldStore[k] !== undefined) {
+            _store[k] = oldStore[k]; // key was set by this process — keep our version
+        }
+        else {
+            delete _store[k]; // key was removed by this process — keep it deleted
+        }
+
+        if (oldExpires[k] !== undefined) {
+            _expires[k] = oldExpires[k]; // expiry was set by this process — keep our TTL
+        }
+        else {
+            delete _expires[k]; // expiry was removed by this process — keep it cleared
+        }
+    }
 }
 
 /**
@@ -357,43 +390,19 @@ function load() {
         var json = fs.readFileSync(_FILE, 'utf8');
         var parsed = JSON.parse(json);
 
-        // save this process's pending (dirty) state before we overwrite _store/_expires
         var oldStore = _store;
         var oldExpires = _expires;
 
-        // replace in-memory state with what's on disk
         _expires = parsed.__expires__ || Object.create(null);
         delete parsed.__expires__;
         _store = parsed;
 
-        // re-apply dirty keys so pending writes from this process are not lost.
-        // without this, a get() triggered by another process's write would cause
-        // load() to clobber keys that set() hasn't yet flushed to disk.
-        var dirtyKeys = Object.keys(_dirty);
-        for (var i = 0; i < dirtyKeys.length; i++) {
-            var k = dirtyKeys[i];
-            if (oldStore[k] !== undefined) {
-                // key was set by this process — keep our version
-                _store[k] = oldStore[k];
-            }
-            else {
-                // key was removed by this process — keep it deleted
-                delete _store[k];
-            }
-
-            if (oldExpires[k] !== undefined) {
-                // expiry was set by this process — keep our TTL
-                _expires[k] = oldExpires[k];
-            }
-            else {
-                // expiry was removed by this process — keep it cleared
-                delete _expires[k];
-            }
-        }
+        reapplyDirtyKeys(oldStore, oldExpires);
 
         _lastMtime = mtime;
         log('reloaded from disk');
-    } catch (e) {
+    }
+    catch (e) {
         // file might not exist yet or is being written — safe to skip
         log('load skipped:', e.message);
     }
@@ -415,6 +424,101 @@ function readFromDisk() {
 }
 
 /**
+ * Acquire the file lock, retrying up to 10 times with random back-off.
+ * Returns the release function on success, or null if all attempts fail.
+ * @returns {Function|null} - Lock release function, or null on failure
+ */
+function acquireLock() {
+    for (var attempts = 1; attempts <= 10; attempts++) {
+        try {
+            return lockfile.lockSync(_FILE, { stale: 10000 });
+        }
+        catch (e) {
+            if (attempts >= 10) {
+                log('could not acquire lock:', e.message);
+                return null;
+            }
+            sleepSync(100 + Math.floor(Math.random() * 100));
+        }
+    }
+    return null;
+}
+
+/**
+ * Merge this process's dirty changes on top of the current disk state, prune
+ * expired entries, and serialise the result to JSON.
+ * Pure computation — reads module state but does not mutate it.
+ * @returns {{ data: Object, json: string, expires: Object }}
+ */
+function mergeAndSerialize() {
+    var data = _clearPending ? Object.create(null) : readFromDisk();
+
+    // apply this process's dirty keys on top of the disk baseline
+    var dirtyKeys = Object.keys(_dirty);
+    for (var i = 0; i < dirtyKeys.length; i++) {
+        var k = dirtyKeys[i];
+        if (_store[k] !== undefined) {
+            data[k] = _store[k]; // key was set — overwrite disk copy
+        }
+        else {
+            delete data[k]; // key was removed — delete from disk copy
+        }
+    }
+
+    // merge expiry timestamps — only touch entries for dirty keys so we
+    // don't accidentally overwrite TTLs written by other processes
+    var mergedExpires = data.__expires__ || Object.create(null);
+    for (var j = 0; j < dirtyKeys.length; j++) {
+        var ek = dirtyKeys[j];
+        if (_expires[ek] !== undefined) {
+            mergedExpires[ek] = _expires[ek];
+        }
+        else {
+            delete mergedExpires[ek];
+        }
+    }
+
+    // prune expired entries before saving so the file stays clean
+    var now = Date.now();
+    var expireKeys = Object.keys(mergedExpires);
+    for (var m = 0; m < expireKeys.length; m++) {
+        if (now > mergedExpires[expireKeys[m]]) {
+            delete data[expireKeys[m]];
+            delete mergedExpires[expireKeys[m]];
+        }
+    }
+
+    // inject expiry map as a reserved key (only when there's something to store)
+    if (Object.keys(mergedExpires).length > 0) data.__expires__ = mergedExpires;
+
+    return { data: data, json: JSON.stringify(data, null, 2), expires: mergedExpires };
+}
+
+/**
+ * Atomically write serialised data to disk and sync all in-memory state.
+ * This is the single point where module state is updated after a write.
+ * @param {Object} data - The merged data object
+ * @param {string} json - Serialised form of data (including __expires__ if present)
+ * @param {Object} expires - The merged expiry map
+ * @returns {void}
+ */
+function commitToDisk(data, json, expires) {
+    // atomic write: write to a temp file then rename over the real file.
+    // rename() is atomic on POSIX — readers never see a partial write.
+    fs.writeFileSync(_TEMP, json);
+    fs.renameSync(_TEMP, _FILE);
+
+    delete data.__expires__;
+    _store = data;
+    _expires = expires;
+    _clearPending = false;
+    _lastMtime = fs.statSync(_FILE).mtimeMs;
+    _dirty = Object.create(null);
+
+    log('saved', Object.keys(_store).length, 'items');
+}
+
+/**
  * Schedule a save — debounced so rapid back-to-back changes only cause one write
  * @returns {void}
  */
@@ -433,21 +537,10 @@ function flush() {
 }
 
 /**
- * Write to disk safely.
- *
- * Steps:
- *   1. Acquire a file lock so only one process writes at a time
- *   2. Read the latest disk state
- *   3. Merge this process's dirty keys on top (set overwrites, remove deletes)
- *   4. Merge expiry timestamps for dirty keys
- *   5. Prune any expired entries
- *   6. Write to a temp file then atomically rename it over the real file
- *   7. Release the lock
- *
- * @param {Function} [done] - optional callback after write completes
+ * Write to disk safely: acquire lock → merge → commit → release.
  * @returns {void}
  */
-function write(done) {
+function write() {
     if (!_FILE) return;
 
     // proper-lockfile requires the file to exist before it can lock it
@@ -457,102 +550,16 @@ function write(done) {
         }
         catch (e) {
             log('could not create file for locking:', e.message);
-            if (done) done();
             return;
         }
     }
 
-    // acquire lock — retry up to 10 times with a short random back-off.
-    // write() must be synchronous because flush() is called on process exit
-    // where async callbacks won't run. The 1s debounce means contention is rare.
-    var release;
-    try {
-        var attempts = 0;
-        while (attempts < 10) {
-            try {
-                release = lockfile.lockSync(_FILE, { stale: 10000 });
-                break;
-            }
-            catch (lockErr) {
-                attempts++;
-                if (attempts >= 10) throw lockErr;
-                var until = Date.now() + 100 + Math.floor(Math.random() * 100);
-                while (Date.now() < until) { /* spin */ }
-            }
-        }
-    }
-    catch (e) {
-        log('could not acquire lock:', e.message);
-        if (done) done();
-        return;
-    }
+    var release = acquireLock();
+    if (!release) return;
 
     try {
-        var data;
-
-        if (_clearPending) {
-            // clear() was called — start from an empty slate rather than merging
-            data = Object.create(null);
-            _clearPending = false;
-        }
-        else {
-            // read latest disk state so we can merge into it without losing
-            // keys written by other processes since we last read
-            data = readFromDisk();
-        }
-
-        // apply this process's dirty keys on top of the disk baseline
-        var dirtyKeys = Object.keys(_dirty);
-        for (var i = 0; i < dirtyKeys.length; i++) {
-            var k = dirtyKeys[i];
-            if (_store[k] !== undefined) {
-                data[k] = _store[k]; // key was set — overwrite disk copy
-            }
-            else {
-                delete data[k]; // key was removed — delete from disk copy
-            }
-        }
-
-        // merge expiry timestamps — only touch entries for dirty keys so we
-        // don't accidentally overwrite TTLs written by other processes
-        var diskExpires = data.__expires__ || Object.create(null);
-        for (var j = 0; j < dirtyKeys.length; j++) {
-            var ek = dirtyKeys[j];
-            if (_expires[ek] !== undefined) {
-                diskExpires[ek] = _expires[ek];
-            }
-            else {
-                delete diskExpires[ek];
-            }
-        }
-        _expires = diskExpires;
-
-        // prune expired entries before saving so the file stays clean
-        var now = Date.now();
-        var expireKeys = Object.keys(_expires);
-        for (var m = 0; m < expireKeys.length; m++) {
-            if (now > _expires[expireKeys[m]]) {
-                delete data[expireKeys[m]];
-                delete _expires[expireKeys[m]];
-            }
-        }
-
-        // inject expiry map as a reserved key (only when there's something to store)
-        if (Object.keys(_expires).length > 0) data.__expires__ = _expires;
-
-        // atomic write: write to a temp file then rename over the real file.
-        // rename() is atomic on POSIX — readers never see a partial write.
-        var json = JSON.stringify(data, null, 2);
-        fs.writeFileSync(_TEMP, json);
-        fs.renameSync(_TEMP, _FILE);
-
-        // sync in-memory state with what we just wrote
-        delete data.__expires__;
-        _store = data;
-        _lastMtime = fs.statSync(_FILE).mtimeMs;
-        _dirty = Object.create(null);
-
-        log('saved', Object.keys(_store).length, 'items');
+        var result = mergeAndSerialize();
+        commitToDisk(result.data, result.json, result.expires);
     }
     catch (e) {
         log('write failed:', e.message);
@@ -564,8 +571,6 @@ function write(done) {
     catch (e) {
         log('release failed:', e.message);
     }
-
-    if (done) done();
 }
 
 /* ─────────────────────────────────────────────
@@ -591,14 +596,20 @@ var api = {
 };
 
 Object.defineProperty(api, 'debug', {
-    get: function () { return _debuggingEnabled; },
-    set: function (value) { _debuggingEnabled = (value === true); },
+    get: function () {
+        return _debuggingEnabled;
+    },
+    set: function (value) {
+        _debuggingEnabled = (value === true);
+    },
     enumerable: true,
     configurable: true
 });
 
 Object.defineProperty(api, 'filename', {
-    get: function () { return _FILE; },
+    get: function () {
+        return _FILE;
+    },
     enumerable: true,
     configurable: true
 });
