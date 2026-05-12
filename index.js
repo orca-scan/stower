@@ -70,31 +70,31 @@ var _debuggingEnabled = false;
 
 /**
  * Normalize key — always trimmed lowercase so 'FOO' and 'foo' are the same key
- * @param {string} str - Raw key
+ * @param {string} rawKey - Raw key
  * @returns {string} - Normalised key
  */
-function key(str) {
-    return String(str || '').trim().toLowerCase();
+function normalizeKey(rawKey) {
+    return String(rawKey || '').trim().toLowerCase();
 }
 
 /**
  * Deep compare 2 values
- * @param {*} a - first value
- * @param {*} b - second value
+ * @param {*} left - first value
+ * @param {*} right - second value
  * @returns {boolean} - true if deeply equal
  */
-function deepEqual(a, b) {
-    if (a === b) return true;
-    if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return false;
+function deepEqual(left, right) {
+    if (left === right) return true;
+    if (typeof left !== 'object' || typeof right !== 'object' || !left || !right) return false;
 
-    var aKeys = Object.keys(a);
-    var bKeys = Object.keys(b);
-    if (aKeys.length !== bKeys.length) return false;
+    var leftKeys = Object.keys(left);
+    var rightKeys = Object.keys(right);
+    if (leftKeys.length !== rightKeys.length) return false;
 
-    for (var i = 0; i < aKeys.length; i++) {
-        var k = aKeys[i];
-        if (!Object.prototype.hasOwnProperty.call(b, k)) return false;
-        if (!deepEqual(a[k], b[k])) return false;
+    for (var i = 0; i < leftKeys.length; i++) {
+        var prop = leftKeys[i];
+        if (!Object.prototype.hasOwnProperty.call(right, prop)) return false;
+        if (!deepEqual(left[prop], right[prop])) return false;
     }
 
     return true;
@@ -102,11 +102,11 @@ function deepEqual(a, b) {
 
 /**
  * Check if a key has passed its expiry time
- * @param {string} k - Normalised key
+ * @param {string} normalizedKey - Normalised key
  * @returns {boolean} - True if the key has a TTL that has passed
  */
-function isExpired(k) {
-    return _expires[k] !== undefined && Date.now() > _expires[k];
+function isExpired(normalizedKey) {
+    return _expires[normalizedKey] !== undefined && Date.now() > _expires[normalizedKey];
 }
 
 /**
@@ -160,20 +160,20 @@ function sleepSync(ms) {
 function set(name, value, expiresInSeconds) {
     if (!name || value === undefined || value === null) return;
 
-    var k = key(name);
+    var normalizedKey = normalizeKey(name);
 
     // __expires__ is reserved for internal TTL storage — block it as a user key
-    if (k === '__expires__') return;
+    if (normalizedKey === '__expires__') return;
 
-    _store[k] = value;
-    _dirty[k] = true; // mark as changed so write() merges this key to disk
+    _store[normalizedKey] = value;
+    _dirty[normalizedKey] = true; // mark as changed so write() merges this key to disk
 
     if (typeof expiresInSeconds === 'number' && expiresInSeconds > 0) {
-        _expires[k] = Date.now() + expiresInSeconds * 1000;
+        _expires[normalizedKey] = Date.now() + expiresInSeconds * 1000;
     }
     else {
         // re-setting without a TTL clears any existing expiry
-        delete _expires[k];
+        delete _expires[normalizedKey];
     }
 
     save();
@@ -187,9 +187,9 @@ function set(name, value, expiresInSeconds) {
  */
 function get(name) {
     load();
-    var k = key(name);
-    if (isExpired(k)) return null;
-    return Object.prototype.hasOwnProperty.call(_store, k) ? _store[k] : null;
+    var normalizedKey = normalizeKey(name);
+    if (isExpired(normalizedKey)) return null;
+    return Object.prototype.hasOwnProperty.call(_store, normalizedKey) ? _store[normalizedKey] : null;
 }
 
 /**
@@ -198,26 +198,26 @@ function get(name) {
  * @returns {void}
  */
 function remove(name) {
-    var k = key(name);
-    delete _store[k];
-    delete _expires[k];
-    _dirty[k] = true; // mark as changed so write() removes this key from disk
+    var normalizedKey = normalizeKey(name);
+    delete _store[normalizedKey];
+    delete _expires[normalizedKey];
+    _dirty[normalizedKey] = true; // mark as changed so write() removes this key from disk
     save();
 }
 
 /**
  * Check if a key exists and optionally if its value matches
  * @param {string} name - Key name
- * @param {*} [obj] - Optional value to match using deep equality
- * @returns {boolean} - True if the key exists and, if obj is provided, deeply equals the stored value
+ * @param {*} [expectedValue] - Optional value to match using deep equality
+ * @returns {boolean} - True if the key exists and, if expectedValue is provided, deeply equals the stored value
  */
-function exists(name, obj) {
+function exists(name, expectedValue) {
     load();
-    var k = key(name);
-    if (isExpired(k)) return false;
-    if (!Object.prototype.hasOwnProperty.call(_store, k)) return false;
+    var normalizedKey = normalizeKey(name);
+    if (isExpired(normalizedKey)) return false;
+    if (!Object.prototype.hasOwnProperty.call(_store, normalizedKey)) return false;
     if (arguments.length < 2) return true;
-    return deepEqual(_store[k], obj);
+    return deepEqual(_store[normalizedKey], expectedValue);
 }
 
 /**
@@ -226,8 +226,8 @@ function exists(name, obj) {
  */
 function keys() {
     load();
-    return Object.keys(_store).filter(function (k) {
-        return !isExpired(k);
+    return Object.keys(_store).filter(function (storeKey) {
+        return !isExpired(storeKey);
     });
 }
 
@@ -238,8 +238,8 @@ function keys() {
 function values() {
     load();
     return Object.keys(_store)
-        .filter(function (k) { return !isExpired(k); })
-        .map(function (k) { return _store[k]; });
+        .filter(function (storeKey) { return !isExpired(storeKey); })
+        .map(function (storeKey) { return _store[storeKey]; });
 }
 
 /**
@@ -279,10 +279,10 @@ function loadInitialData() {
         _lastMtime = fs.statSync(_FILE).mtimeMs;
         log('loaded', Object.keys(_store).length, 'items');
     }
-    catch (e) {
-        if (e.code === 'EACCES') {
+    catch (error) {
+        if (error.code === 'EACCES') {
             log('permission denied:', _FILE);
-            throw e;
+            throw error;
         }
 
         // back up the corrupt file so we don't permanently lose data
@@ -307,10 +307,10 @@ function loadInitialData() {
  */
 function cleanOrphanedTempFiles(dir) {
     try {
-        var base = path.basename(_FILE);
+        var dataFileName = path.basename(_FILE);
         var tmpFiles = fs.readdirSync(dir);
         for (var i = 0; i < tmpFiles.length; i++) {
-            if (tmpFiles[i].indexOf(base + '.') === 0 && tmpFiles[i].slice(-4) === '.tmp') {
+            if (tmpFiles[i].indexOf(dataFileName + '.') === 0 && tmpFiles[i].slice(-4) === '.tmp') {
                 try {
                     fs.unlinkSync(path.join(dir, tmpFiles[i]));
                     log('removed orphaned temp file:', tmpFiles[i]);
@@ -358,11 +358,11 @@ function persist(filename) {
             fs.accessSync(dir, fs.constants.W_OK);
             break;
         }
-        catch (e) {
+        catch (error) {
             if (attempts >= 10) {
                 log('failed to create directory:', dir);
-                log('error:', e.message);
-                throw e;
+                log('error:', error.message);
+                throw error;
             }
             log('waiting for path:', dir, '| attempts left:', 10 - attempts);
             sleepSync(300); // blocks the event loop — only reached on Docker volume delays at startup
@@ -383,19 +383,19 @@ function persist(filename) {
 function reapplyDirtyKeys(oldStore, oldExpires) {
     var dirtyKeys = Object.keys(_dirty);
     for (var i = 0; i < dirtyKeys.length; i++) {
-        var k = dirtyKeys[i];
-        if (oldStore[k] !== undefined) {
-            _store[k] = oldStore[k]; // key was set by this process — keep our version
+        var dirtyKey = dirtyKeys[i];
+        if (oldStore[dirtyKey] !== undefined) {
+            _store[dirtyKey] = oldStore[dirtyKey]; // key was set by this process — keep our version
         }
         else {
-            delete _store[k]; // key was removed by this process — keep it deleted
+            delete _store[dirtyKey]; // key was removed by this process — keep it deleted
         }
 
-        if (oldExpires[k] !== undefined) {
-            _expires[k] = oldExpires[k]; // expiry was set by this process — keep our TTL
+        if (oldExpires[dirtyKey] !== undefined) {
+            _expires[dirtyKey] = oldExpires[dirtyKey]; // expiry was set by this process — keep our TTL
         }
         else {
-            delete _expires[k]; // expiry was removed by this process — keep it cleared
+            delete _expires[dirtyKey]; // expiry was removed by this process — keep it cleared
         }
     }
 }
@@ -437,9 +437,9 @@ function load() {
         _lastMtime = mtime;
         log('reloaded from disk');
     }
-    catch (e) {
+    catch (error) {
         // file might not exist yet or is being written — safe to skip
-        log('load skipped:', e.message);
+        log('load skipped:', error.message);
     }
 }
 
@@ -453,7 +453,7 @@ function readFromDisk() {
         var json = fs.readFileSync(_FILE, 'utf8');
         return JSON.parse(json);
     }
-    catch (e) {
+    catch (error) {
         return Object.create(null);
     }
 }
@@ -468,9 +468,9 @@ function acquireLock() {
         try {
             return lockfile.lockSync(_FILE, { stale: 10000 });
         }
-        catch (e) {
+        catch (error) {
             if (attempts >= 10) {
-                log('could not acquire lock:', e.message);
+                log('could not acquire lock:', error.message);
                 return null;
             }
             sleepSync(100 + Math.floor(Math.random() * 100));
@@ -491,12 +491,12 @@ function mergeAndSerialize() {
     // apply this process's dirty keys on top of the disk baseline
     var dirtyKeys = Object.keys(_dirty);
     for (var i = 0; i < dirtyKeys.length; i++) {
-        var k = dirtyKeys[i];
-        if (_store[k] !== undefined) {
-            data[k] = _store[k]; // key was set — overwrite disk copy
+        var dirtyKey = dirtyKeys[i];
+        if (_store[dirtyKey] !== undefined) {
+            data[dirtyKey] = _store[dirtyKey]; // key was set — overwrite disk copy
         }
         else {
-            delete data[k]; // key was removed — delete from disk copy
+            delete data[dirtyKey]; // key was removed — delete from disk copy
         }
     }
 
@@ -504,12 +504,12 @@ function mergeAndSerialize() {
     // don't accidentally overwrite TTLs written by other processes
     var mergedExpires = data.__expires__ || Object.create(null);
     for (var j = 0; j < dirtyKeys.length; j++) {
-        var ek = dirtyKeys[j];
-        if (_expires[ek] !== undefined) {
-            mergedExpires[ek] = _expires[ek];
+        var expiryKey = dirtyKeys[j];
+        if (_expires[expiryKey] !== undefined) {
+            mergedExpires[expiryKey] = _expires[expiryKey];
         }
         else {
-            delete mergedExpires[ek];
+            delete mergedExpires[expiryKey];
         }
     }
 
@@ -583,8 +583,8 @@ function write() {
         try {
             fs.writeFileSync(_FILE, '{}');
         }
-        catch (e) {
-            log('could not create file for locking:', e.message);
+        catch (error) {
+            log('could not create file for locking:', error.message);
             return;
         }
     }
@@ -596,15 +596,15 @@ function write() {
         var result = mergeAndSerialize();
         commitToDisk(result.data, result.json, result.expires);
     }
-    catch (e) {
-        log('write failed:', e.message);
+    catch (error) {
+        log('write failed:', error.message);
     }
 
     try {
         release();
     }
-    catch (e) {
-        log('release failed:', e.message);
+    catch (error) {
+        log('release failed:', error.message);
     }
 }
 
