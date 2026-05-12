@@ -12,6 +12,7 @@ describe('stower: expiresInSeconds', function () {
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
+        stower.persist(filepath); // reset singleton state between tests
     });
 
     afterEach(function () {

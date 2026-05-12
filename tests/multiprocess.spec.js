@@ -137,4 +137,63 @@ describe('stower: multiprocess', function () {
         var raw = fs.readFileSync(filepath, 'utf8');
         expect(function () { JSON.parse(raw); }).not.toThrow();
     });
+
+    it('should preserve TTL entries from both processes when two processes write with TTLs concurrently', async function () {
+        var entriesA = [
+            { key: 'ttl_a0', value: { src: 'A' }, ttl: 60 },
+            { key: 'ttl_a1', value: { src: 'A' }, ttl: 60 },
+            { key: 'ttl_a2', value: { src: 'A' }, ttl: 60 }
+        ];
+        var entriesB = [
+            { key: 'ttl_b0', value: { src: 'B' }, ttl: 60 },
+            { key: 'ttl_b1', value: { src: 'B' }, ttl: 60 },
+            { key: 'ttl_b2', value: { src: 'B' }, ttl: 60 }
+        ];
+
+        var results = await Promise.all([
+            runWorker({ cmd: 'setMany', file: filepath, entries: entriesA }),
+            runWorker({ cmd: 'setMany', file: filepath, entries: entriesB })
+        ]);
+
+        expect(results[0].ok).toBe(true);
+        expect(results[1].ok).toBe(true);
+
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+
+        // all 6 keys must exist
+        for (var i = 0; i < 3; i++) {
+            expect(content['ttl_a' + i]).toBeDefined();
+            expect(content['ttl_b' + i]).toBeDefined();
+        }
+
+        // all 6 TTL entries must be in __expires__
+        expect(content.__expires__).toBeDefined();
+        for (var j = 0; j < 3; j++) {
+            expect(content.__expires__['ttl_a' + j]).toBeDefined();
+            expect(content.__expires__['ttl_b' + j]).toBeDefined();
+        }
+    });
+
+    it('should preserve all 100 keys when 10 processes write concurrently', async function () {
+        var workers = [];
+        for (var i = 0; i < 10; i++) {
+            var entries = [];
+            for (var j = 0; j < 10; j++) {
+                entries.push({ key: 'w' + i + '_k' + j, value: { worker: i, key: j } });
+            }
+            workers.push(runWorker({ cmd: 'setMany', file: filepath, entries: entries }));
+        }
+
+        var results = await Promise.all(workers);
+
+        for (var r = 0; r < results.length; r++) {
+            expect(results[r].ok).toBe(true);
+        }
+
+        var raw = fs.readFileSync(filepath, 'utf8');
+        var content = JSON.parse(raw); // throws if corrupt
+
+        var allKeys = Object.keys(content).filter(function (k) { return k !== '__expires__'; });
+        expect(allKeys.length).toBe(100);
+    });
 });

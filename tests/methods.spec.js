@@ -186,6 +186,59 @@ describe('stower: methods', function () {
         var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
         expect(content.newfile).toEqual({ v: 1 });
     });
+
+    // --- dirty-window: pending writes must survive a load() triggered by an external write ---
+    // Regression tests for the bug where load() replaced _store wholesale, causing dirty
+    // keys (set but not yet flushed) to be treated as deletes when write() eventually ran.
+
+    it('should preserve a dirty key after load() is triggered by an external file change', async function () {
+        stower.persist(filepath);
+
+        // set a key — it is now dirty (in memory, not yet on disk)
+        stower.set('myset', { v: 1 });
+
+        // simulate another container writing to the file, changing its mtime
+        var external = { other: { v: 99 } };
+        fs.writeFileSync(filepath, JSON.stringify(external, null, 2));
+
+        // get() triggers load() which detects the mtime change and reloads from disk
+        stower.get('probe');
+
+        // wait for the debounced write to flush
+        await wait(1500);
+
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+
+        // our dirty key must survive — load() must not wipe it
+        expect(content.myset).toEqual({ v: 1 });
+
+        // the other container's key must also be present — merge must work both ways
+        expect(content.other).toEqual({ v: 99 });
+    });
+
+    it('should preserve a dirty TTL after load() is triggered by an external file change', async function () {
+        stower.persist(filepath);
+
+        // set a key with a 60s TTL — dirty and not yet flushed
+        stower.set('ttlkey', { v: 1 }, 60);
+
+        // simulate another container writing to the file
+        var external = { other: { v: 99 } };
+        fs.writeFileSync(filepath, JSON.stringify(external, null, 2));
+
+        // trigger load() via get()
+        stower.get('probe');
+
+        // wait for debounced write
+        await wait(1500);
+
+        var content = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+
+        // the TTL must survive the reload — without the fix, load() clears _expires
+        // and write() persists __expires__ without ttlkey, losing the expiry forever
+        expect(content.__expires__).toBeDefined();
+        expect(content.__expires__.ttlkey).toBeDefined();
+    });
 });
 
 /**

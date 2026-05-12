@@ -10,7 +10,7 @@
  *   { cmd: 'clear',  file }
  *   { cmd: 'get',    file, key }
  *   { cmd: 'keys',   file }
- *   { cmd: 'setMany', file, entries: [{ key, value }] }
+ *   { cmd: 'setMany', file, entries: [{ key, value, [ttl] }] }
  */
 
 /* eslint-disable import/extensions */
@@ -25,7 +25,7 @@ process.on('message', function (msg) {
 
         } else if (msg.cmd === 'setMany') {
             for (var i = 0; i < msg.entries.length; i++) {
-                stower.set(msg.entries[i].key, msg.entries[i].value);
+                stower.set(msg.entries[i].key, msg.entries[i].value, msg.entries[i].ttl);
             }
 
         } else if (msg.cmd === 'remove') {
