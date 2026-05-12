@@ -28,6 +28,9 @@ stower.debug = true;
 // store some data
 stower.set('token', { id: '123', key: 'abc' });
 
+// store with a TTL (auto-expires after 30 seconds)
+stower.set('session', { user: 'alice' }, 30000);
+
 // retrieve it
 var token = stower.get('token');
 
@@ -64,7 +67,7 @@ Property   | Description
 Method              | Description
 :-------------------|:-------------------------------------------------------------------------------------
 `get(key)`          | Retrieves a value by key, returns `null` if the key doesn't exist
-`set(key, value)`   | Stores a value and schedules it to be saved to disk
+`set(key, val, ttl)` | Stores a value and schedules it to be saved to disk. Optional `ttl` (ms) auto-expires the entry
 `remove(key)`       | Deletes a key from the store and schedules the update to disk
 `exists(key, val)`  | Checks if a key exists and optionally if it matches a given value using deep equality
 `keys()`            | Returns an array of all stored keys
@@ -73,6 +76,8 @@ Method              | Description
 `persist(filename)` | Loads previously saved values from disk and auto saves changes _(optional filename)_
 
 Note: if `persist()` is not called, values only exist in memory.
+
+Note: TTL expiry timestamps are persisted to disk, so other processes sharing the same JSON file will also respect entry expiry.
 
 ## Contributing
 
