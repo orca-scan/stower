@@ -1,10 +1,30 @@
 {
   "name": "stower",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Simple disk backed key/value store for node",
   "main": "index.js",
   "scripts": {
-    "test": "NODE_ENV=test node_modules/.bin/jasmine --config=tests/jasmine/config.json"
+    "test": "NODE_ENV=test node_modules/.bin/jasmine --config=tests/jasmine/config.json",
+    "test:coverage": "NODE_ENV=test nyc node_modules/.bin/jasmine --config=tests/jasmine/config.json",
+    "coverage": "npm run test:coverage"
+  },
+  "nyc": {
+    "include": [
+      "index.js"
+    ],
+    "exclude": [
+      "tests/**",
+      "cache/**"
+    ],
+    "reporter": [
+      "text-summary",
+      "text"
+    ],
+    "check-coverage": true,
+    "lines": 95,
+    "functions": 95,
+    "branches": 90,
+    "statements": 95
   },
   "repository": {
     "type": "git",
@@ -24,7 +44,8 @@
     "eslint-config-airbnb-base": "^11.2.0",
     "eslint-plugin-import": "^2.2.0",
     "jasmine": "^4.0.2",
-    "jasmine-console-reporter": "^3.1.0"
+    "jasmine-console-reporter": "^3.1.0",
+    "nyc": "^15.1.0"
   },
   "eslintConfig": {
     "extends": "airbnb-base",

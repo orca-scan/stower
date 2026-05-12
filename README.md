@@ -69,7 +69,7 @@ Method                              | Description
 `get(key)`                          | Retrieves a value by key, returns `null` if the key doesn't exist
 `set(key, value, expiresInSeconds)` | Stores a value and schedules it to be saved to disk. Pass an optional `expiresInSeconds` to automatically expire the entry
 `remove(key)`                       | Deletes a key from the store and schedules the update to disk
-`exists(key, val)`                  | Checks if a key exists and optionally if it matches a given value using deep equality
+`exists(key)`                       | Checks if a key exists
 `keys()`                            | Returns an array of all stored keys
 `values()`                          | Returns an array of all stored values
 `clear()`                           | Deletes all stored data and schedules a save to disk
@@ -85,6 +85,8 @@ As always, pull requests are welcomed - but please ensure you provide a test whe
 
 You can run the tests using `npm test`
 
+To run tests with coverage and enforce thresholds, use `npm run test:coverage`
+
 ### Star
 
 If you find this useful please star the repo, it helps us prioritise Open Source work.
@@ -96,7 +98,3 @@ For change-log, check [releases](https://github.com/orca-scan/stower/releases).
 ## License
 
 [MIT License](LICENSE) © Orca Scan - a [barcode app](https://orcascan.com) with simple [barcode tracking APIs](https://orcascan.com/guides?tag=for-developers).
-
-## TODO
-
-* Add more [Jasmine tests](./tests/) _(PRs welcome)_

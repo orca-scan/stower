@@ -56,7 +56,7 @@ describe('stower: multiprocess', function () {
         }
     });
 
-    it('should preserve keys from both processes when two processes write different keys concurrently', async function () {
+    it('keeps keys from both processes during concurrent writes', async function () {
         var keysA = [];
         var keysB = [];
         for (var i = 0; i < 5; i++) {
@@ -81,7 +81,7 @@ describe('stower: multiprocess', function () {
         }
     });
 
-    it('should not produce corrupt JSON under lock contention with 4 concurrent writers', async function () {
+    it('keeps JSON valid with 4 writers competing for the lock', async function () {
         var workers = [];
         for (var i = 0; i < 4; i++) {
             var entries = [];
@@ -105,8 +105,8 @@ describe('stower: multiprocess', function () {
         expect(allKeys.length).toBe(40);
     });
 
-    it('should produce consistent (non-corrupt) JSON when one process clears while another writes', async function () {
-        // writer sets 5 keys, clearer calls clear() — run simultaneously
+    it('keeps JSON valid when one process clears while another writes', async function () {
+        // writer sets 5 keys, clearer calls clear() - run simultaneously
         var entries = [];
         for (var i = 0; i < 5; i++) {
             entries.push({ key: 'todelete' + i, value: { v: i } });
@@ -124,7 +124,7 @@ describe('stower: multiprocess', function () {
         expect(dataKeys.length === 0 || dataKeys.length === 5).toBe(true);
     });
 
-    it('should produce consistent (non-corrupt) JSON when one process removes a key another is setting', async function () {
+    it('keeps JSON valid when remove and set race on the same key', async function () {
         // pre-create the file with the key present
         fs.writeFileSync(filepath, JSON.stringify({ contested: { v: 0 } }, null, 2));
 
@@ -138,7 +138,7 @@ describe('stower: multiprocess', function () {
         expect(function () { JSON.parse(raw); }).not.toThrow();
     });
 
-    it('should preserve TTL entries from both processes when two processes write with TTLs concurrently', async function () {
+    it('keeps TTL entries from both processes during concurrent writes', async function () {
         var entriesA = [
             { key: 'ttl_a0', value: { src: 'A' }, ttl: 60 },
             { key: 'ttl_a1', value: { src: 'A' }, ttl: 60 },
@@ -174,7 +174,7 @@ describe('stower: multiprocess', function () {
         }
     });
 
-    it('should preserve all 100 keys when 10 processes write concurrently', async function () {
+    it('keeps all 100 keys with 10 concurrent processes', async function () {
         var workers = [];
         for (var i = 0; i < 10; i++) {
             var entries = [];
@@ -199,8 +199,8 @@ describe('stower: multiprocess', function () {
 
     // Regression test: with 8+ processes flushing to disk simultaneously (rolling deploys,
     // container restarts) the lock retry budget (~1.5 s) was exhausted and write() returned
-    // without saving — silently dropping ~50 keys per failed process.
-    it('should preserve all 400 keys when 8 processes flush to disk concurrently', async function () {
+    // without saving - silently dropping ~50 keys per failed process.
+    it('keeps all 400 keys with 8 concurrent flushes', async function () {
         var workers = [];
         for (var i = 0; i < 8; i++) {
             var entries = [];
